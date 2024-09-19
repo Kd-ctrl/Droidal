@@ -1,0 +1,7 @@
+## droidal
+
+droidal
+
+#### License
+
+mit
