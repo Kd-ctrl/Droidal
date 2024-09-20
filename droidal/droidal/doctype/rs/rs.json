@@ -1,0 +1,669 @@
+{
+ "actions": [],
+ "autoname": "autoincrement",
+ "creation": "2024-09-19 19:54:36.597678",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "tab1_tab",
+  "record_type",
+  "admission_packet_sent",
+  "admitted",
+  "admitted_client_had_an_evaluation",
+  "adolescent",
+  "age_at_inquiry",
+  "age_category",
+  "calculated_age",
+  "application",
+  "column_break_na3oc",
+  "birth_sex",
+  "brand",
+  "caller_state",
+  "caller_zip",
+  "caller_relation_to_client",
+  "program_location",
+  "location_for_kipu",
+  "caller_msa",
+  "city",
+  "tab2_tab",
+  "city_based_on_territory_assigned",
+  "clementine_briar_cliff_manor_rtc",
+  "clementine_malibu_lake_rtc",
+  "clementine_pinecrest_rtc",
+  "client_country",
+  "client_help_text",
+  "client_msa",
+  "inquiry_stage",
+  "inquiry_status",
+  "column_break_z9acn",
+  "inquiry__owner_name",
+  "inquiry_owner_alias",
+  "inquiry_owner_role",
+  "inquiry_id",
+  "sno_of_inquiry",
+  "client_created_date",
+  "client_scffrom_terr",
+  "client_territory_last_edited",
+  "client_clearance_approved",
+  "tab3_tab",
+  "client_imperssion_received",
+  "create_pdfs",
+  "cross_brand_admission",
+  "ctm_audit_could_not_confirm",
+  "currently_enrolled__current_episode",
+  "current_quarter",
+  "current_year",
+  "date_of__birth",
+  "days_open",
+  "column_break_f81tq",
+  "days_to_conclusion",
+  "dmh_expdited",
+  "east_west",
+  "eastwest",
+  "email_opt_out",
+  "emergency_contact",
+  "english_proficient",
+  "financial_agreement_sent",
+  "financial_contract_attached",
+  "tab_4_tab",
+  "financial_disccompleted_and_approved",
+  "financial_discussion_complete",
+  "higher_level_review_completed",
+  "hub",
+  "inq_source",
+  "inquiry_admitted_counter",
+  "inquiry_admitted_counterlast_6_months",
+  "inquiry_open_counter",
+  "column_break_av5g3",
+  "inquiry_open_counterlast_6_months",
+  "insurance_verification",
+  "insurance_verficationnot_needed",
+  "insurance_verfication_sent",
+  "intake_assessment_completed",
+  "intake_assessment_email_sent",
+  "last_activity_assigned",
+  "last_activity_subject",
+  "level_of_care",
+  "medical_clearance",
+  "tab_5_tab",
+  "medical_clearance_approved",
+  "medical_clearance_requested",
+  "monte_nido_nido_rtc",
+  "most_recent_primary_insurance_record",
+  "new_inquiry_email_alert_check",
+  "open_date",
+  "open_day_of_week",
+  "outreach_category",
+  "parent_advocate_notified",
+  "column_break_728tm",
+  "payment_plan_in_place",
+  "policy",
+  "policy_number",
+  "policy_number_first_three",
+  "possible_scholarship_stage_checkbox",
+  "pre_authorization_completed",
+  "predetermined_los",
+  "10_days_after_closed",
+  "caller_scf_code",
+  "column_break_63rxn",
+  "caller_territorylast_edited",
+  "checklist_is_incomplete",
+  "inquiry_reopened_in_current_quarter",
+  "insurance_company",
+  "insurance_notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "tab1_tab",
+   "fieldtype": "Tab Break",
+   "label": "tab1"
+  },
+  {
+   "fieldname": "record_type",
+   "fieldtype": "Data",
+   "label": "Record Type"
+  },
+  {
+   "fieldname": "admission_packet_sent",
+   "fieldtype": "Data",
+   "label": "Admission Packet Sent"
+  },
+  {
+   "fieldname": "admitted",
+   "fieldtype": "Data",
+   "label": "Admitted"
+  },
+  {
+   "fieldname": "admitted_client_had_an_evaluation",
+   "fieldtype": "Data",
+   "label": "Admitted Client Had an Evaluation"
+  },
+  {
+   "fieldname": "adolescent",
+   "fieldtype": "Data",
+   "label": "Adolescent"
+  },
+  {
+   "fieldname": "age_at_inquiry",
+   "fieldtype": "Data",
+   "label": "Age at Inquiry"
+  },
+  {
+   "fieldname": "age_category",
+   "fieldtype": "Data",
+   "label": "Age Category"
+  },
+  {
+   "fieldname": "calculated_age",
+   "fieldtype": "Data",
+   "label": "Calculated Age"
+  },
+  {
+   "fieldname": "application",
+   "fieldtype": "Data",
+   "label": "Application"
+  },
+  {
+   "fieldname": "column_break_na3oc",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "birth_sex",
+   "fieldtype": "Data",
+   "label": "Birth Sex"
+  },
+  {
+   "fieldname": "brand",
+   "fieldtype": "Data",
+   "label": "Brand"
+  },
+  {
+   "fieldname": "caller_state",
+   "fieldtype": "Data",
+   "label": "Caller State"
+  },
+  {
+   "fieldname": "caller_zip",
+   "fieldtype": "Data",
+   "label": "Caller Zip"
+  },
+  {
+   "fieldname": "caller_relation_to_client",
+   "fieldtype": "Data",
+   "label": "Caller Relation to Client"
+  },
+  {
+   "fieldname": "program_location",
+   "fieldtype": "Data",
+   "label": "Program Location"
+  },
+  {
+   "fieldname": "location_for_kipu",
+   "fieldtype": "Data",
+   "label": "Location for KIPU"
+  },
+  {
+   "fieldname": "caller_msa",
+   "fieldtype": "Data",
+   "label": "Caller MSA"
+  },
+  {
+   "fieldname": "city",
+   "fieldtype": "Data",
+   "label": "City"
+  },
+  {
+   "fieldname": "tab2_tab",
+   "fieldtype": "Tab Break",
+   "label": "tab2"
+  },
+  {
+   "fieldname": "city_based_on_territory_assigned",
+   "fieldtype": "Data",
+   "label": "City Based on Territory Assigned"
+  },
+  {
+   "fieldname": "clementine_briar_cliff_manor_rtc",
+   "fieldtype": "Data",
+   "label": "Clementine Briar Cliff Manor RTC"
+  },
+  {
+   "fieldname": "clementine_malibu_lake_rtc",
+   "fieldtype": "Data",
+   "label": "Clementine Malibu Lake RTC"
+  },
+  {
+   "fieldname": "clementine_pinecrest_rtc",
+   "fieldtype": "Data",
+   "label": "Clementine Pinecrest RTC"
+  },
+  {
+   "fieldname": "client_country",
+   "fieldtype": "Data",
+   "label": "Client Country"
+  },
+  {
+   "fieldname": "client_help_text",
+   "fieldtype": "Data",
+   "label": "Client Help Text"
+  },
+  {
+   "fieldname": "client_msa",
+   "fieldtype": "Data",
+   "label": "Client MSA"
+  },
+  {
+   "fieldname": "inquiry_stage",
+   "fieldtype": "Data",
+   "label": "Inquiry Stage"
+  },
+  {
+   "fieldname": "inquiry_status",
+   "fieldtype": "Data",
+   "label": "Inquiry Status"
+  },
+  {
+   "fieldname": "column_break_z9acn",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "inquiry__owner_name",
+   "fieldtype": "Data",
+   "label": "Inquiry  Owner Name"
+  },
+  {
+   "fieldname": "inquiry_owner_alias",
+   "fieldtype": "Data",
+   "label": "Inquiry Owner Alias"
+  },
+  {
+   "fieldname": "inquiry_owner_role",
+   "fieldtype": "Data",
+   "label": "Inquiry Owner Role"
+  },
+  {
+   "fieldname": "inquiry_id",
+   "fieldtype": "Data",
+   "label": "Inquiry ID"
+  },
+  {
+   "fieldname": "sno_of_inquiry",
+   "fieldtype": "Data",
+   "label": "SNo of Inquiry"
+  },
+  {
+   "fieldname": "client_created_date",
+   "fieldtype": "Data",
+   "label": "Client Created Date"
+  },
+  {
+   "fieldname": "client_scffrom_terr",
+   "fieldtype": "Data",
+   "label": "Client SCF(from TERR)"
+  },
+  {
+   "fieldname": "client_territory_last_edited",
+   "fieldtype": "Data",
+   "label": "Client territory last edited"
+  },
+  {
+   "fieldname": "client_clearance_approved",
+   "fieldtype": "Data",
+   "label": "Client Clearance Approved"
+  },
+  {
+   "fieldname": "tab3_tab",
+   "fieldtype": "Tab Break",
+   "label": "tab3"
+  },
+  {
+   "fieldname": "client_imperssion_received",
+   "fieldtype": "Data",
+   "label": "Client Imperssion Received"
+  },
+  {
+   "fieldname": "create_pdfs",
+   "fieldtype": "Data",
+   "label": "Create PDFs"
+  },
+  {
+   "fieldname": "cross_brand_admission",
+   "fieldtype": "Data",
+   "label": "Cross Brand Admission"
+  },
+  {
+   "fieldname": "ctm_audit_could_not_confirm",
+   "fieldtype": "Data",
+   "label": "CTM Audit( Could not confirm)"
+  },
+  {
+   "fieldname": "currently_enrolled__current_episode",
+   "fieldtype": "Data",
+   "label": "Currently Enrolled ( Current Episode)"
+  },
+  {
+   "fieldname": "current_quarter",
+   "fieldtype": "Data",
+   "label": "Current Quarter"
+  },
+  {
+   "fieldname": "current_year",
+   "fieldtype": "Data",
+   "label": "Current Year"
+  },
+  {
+   "fieldname": "date_of__birth",
+   "fieldtype": "Data",
+   "label": "Date of  Birth"
+  },
+  {
+   "fieldname": "days_open",
+   "fieldtype": "Data",
+   "label": "Days Open"
+  },
+  {
+   "fieldname": "column_break_f81tq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "days_to_conclusion",
+   "fieldtype": "Data",
+   "label": "Days to Conclusion"
+  },
+  {
+   "fieldname": "dmh_expdited",
+   "fieldtype": "Data",
+   "label": "DMH Expdited"
+  },
+  {
+   "fieldname": "east_west",
+   "fieldtype": "Data",
+   "label": "East West"
+  },
+  {
+   "fieldname": "eastwest",
+   "fieldtype": "Data",
+   "label": "EastWest"
+  },
+  {
+   "fieldname": "email_opt_out",
+   "fieldtype": "Data",
+   "label": "Email Opt Out"
+  },
+  {
+   "fieldname": "emergency_contact",
+   "fieldtype": "Data",
+   "label": "Emergency Contact"
+  },
+  {
+   "fieldname": "english_proficient",
+   "fieldtype": "Data",
+   "label": "English Proficient"
+  },
+  {
+   "fieldname": "financial_agreement_sent",
+   "fieldtype": "Data",
+   "label": "Financial Agreement Sent"
+  },
+  {
+   "fieldname": "financial_contract_attached",
+   "fieldtype": "Data",
+   "label": "Financial Contract Attached"
+  },
+  {
+   "fieldname": "tab_4_tab",
+   "fieldtype": "Tab Break",
+   "label": "tab 4"
+  },
+  {
+   "fieldname": "financial_disccompleted_and_approved",
+   "fieldtype": "Data",
+   "label": "Financial Disc(Completed And Approved)"
+  },
+  {
+   "fieldname": "financial_discussion_complete",
+   "fieldtype": "Data",
+   "label": "Financial Discussion Complete"
+  },
+  {
+   "fieldname": "higher_level_review_completed",
+   "fieldtype": "Data",
+   "label": "Higher Level Review Completed"
+  },
+  {
+   "fieldname": "hub",
+   "fieldtype": "Data",
+   "label": "Hub"
+  },
+  {
+   "fieldname": "inq_source",
+   "fieldtype": "Data",
+   "label": "INQ Source"
+  },
+  {
+   "fieldname": "inquiry_admitted_counter",
+   "fieldtype": "Data",
+   "label": "Inquiry Admitted Counter"
+  },
+  {
+   "fieldname": "inquiry_admitted_counterlast_6_months",
+   "fieldtype": "Data",
+   "label": "Inquiry Admitted Counter(Last 6 Months)"
+  },
+  {
+   "fieldname": "inquiry_open_counter",
+   "fieldtype": "Data",
+   "label": "Inquiry Open Counter"
+  },
+  {
+   "fieldname": "column_break_av5g3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "inquiry_open_counterlast_6_months",
+   "fieldtype": "Data",
+   "label": "Inquiry Open Counter(Last 6 Months)"
+  },
+  {
+   "fieldname": "insurance_verification",
+   "fieldtype": "Data",
+   "label": "Insurance Verification"
+  },
+  {
+   "fieldname": "insurance_verficationnot_needed",
+   "fieldtype": "Data",
+   "label": "Insurance Verfication(Not Needed)"
+  },
+  {
+   "fieldname": "insurance_verfication_sent",
+   "fieldtype": "Data",
+   "label": "Insurance Verfication Sent"
+  },
+  {
+   "fieldname": "intake_assessment_completed",
+   "fieldtype": "Data",
+   "label": "Intake Assessment Completed"
+  },
+  {
+   "fieldname": "intake_assessment_email_sent",
+   "fieldtype": "Data",
+   "label": "Intake Assessment Email Sent"
+  },
+  {
+   "fieldname": "last_activity_assigned",
+   "fieldtype": "Data",
+   "label": "Last Activity Assigned"
+  },
+  {
+   "fieldname": "last_activity_subject",
+   "fieldtype": "Data",
+   "label": "Last Activity Subject"
+  },
+  {
+   "fieldname": "level_of_care",
+   "fieldtype": "Data",
+   "label": "Level of Care"
+  },
+  {
+   "fieldname": "medical_clearance",
+   "fieldtype": "Data",
+   "label": "Medical Clearance"
+  },
+  {
+   "fieldname": "tab_5_tab",
+   "fieldtype": "Tab Break",
+   "label": "tab 5"
+  },
+  {
+   "fieldname": "medical_clearance_approved",
+   "fieldtype": "Data",
+   "label": "Medical Clearance Approved"
+  },
+  {
+   "fieldname": "medical_clearance_requested",
+   "fieldtype": "Data",
+   "label": "Medical Clearance Requested"
+  },
+  {
+   "fieldname": "monte_nido_nido_rtc",
+   "fieldtype": "Data",
+   "label": "Monte Nido Nido RTC"
+  },
+  {
+   "fieldname": "most_recent_primary_insurance_record",
+   "fieldtype": "Data",
+   "label": "Most Recent Primary Insurance Record"
+  },
+  {
+   "fieldname": "new_inquiry_email_alert_check",
+   "fieldtype": "Data",
+   "label": "New Inquiry Email Alert Check"
+  },
+  {
+   "fieldname": "open_date",
+   "fieldtype": "Data",
+   "label": "Open Date"
+  },
+  {
+   "fieldname": "open_day_of_week",
+   "fieldtype": "Data",
+   "label": "Open Day of Week"
+  },
+  {
+   "fieldname": "outreach_category",
+   "fieldtype": "Data",
+   "label": "Outreach Category"
+  },
+  {
+   "fieldname": "parent_advocate_notified",
+   "fieldtype": "Data",
+   "label": "Parent Advocate Notified"
+  },
+  {
+   "fieldname": "column_break_728tm",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "payment_plan_in_place",
+   "fieldtype": "Data",
+   "label": "Payment Plan In Place"
+  },
+  {
+   "fieldname": "policy",
+   "fieldtype": "Data",
+   "label": "Policy"
+  },
+  {
+   "fieldname": "policy_number",
+   "fieldtype": "Data",
+   "label": "Policy Number"
+  },
+  {
+   "fieldname": "policy_number_first_three",
+   "fieldtype": "Data",
+   "label": "Policy Number (First Three)"
+  },
+  {
+   "fieldname": "possible_scholarship_stage_checkbox",
+   "fieldtype": "Data",
+   "label": "Possible Scholarship Stage Checkbox"
+  },
+  {
+   "fieldname": "pre_authorization_completed",
+   "fieldtype": "Data",
+   "label": "Pre Authorization Completed"
+  },
+  {
+   "fieldname": "predetermined_los",
+   "fieldtype": "Data",
+   "label": "Predetermined LOS?"
+  },
+  {
+   "fieldname": "10_days_after_closed",
+   "fieldtype": "Data",
+   "label": "10 Days after Closed"
+  },
+  {
+   "fieldname": "caller_scf_code",
+   "fieldtype": "Data",
+   "label": "Caller SCF Code"
+  },
+  {
+   "fieldname": "column_break_63rxn",
+   "fieldtype": "Tab Break",
+   "label": "tab 6"
+  },
+  {
+   "fieldname": "caller_territorylast_edited",
+   "fieldtype": "Data",
+   "label": "Caller Territory(last Edited)"
+  },
+  {
+   "fieldname": "checklist_is_incomplete",
+   "fieldtype": "Data",
+   "label": "Checklist Is Incomplete"
+  },
+  {
+   "fieldname": "inquiry_reopened_in_current_quarter",
+   "fieldtype": "Data",
+   "label": "Inquiry ReOpened in Current Quarter"
+  },
+  {
+   "fieldname": "insurance_company",
+   "fieldtype": "Data",
+   "label": "Insurance Company"
+  },
+  {
+   "fieldname": "insurance_notes",
+   "fieldtype": "Data",
+   "label": "Insurance Notes"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2024-09-19 20:04:32.906796",
+ "modified_by": "Administrator",
+ "module": "droidal",
+ "name": "RS",
+ "naming_rule": "Autoincrement",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
