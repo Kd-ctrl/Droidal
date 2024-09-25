@@ -208,3 +208,14 @@ def get_employee_id():
         }
     except:
         return None
+
+
+
+@frappe.whitelist()
+def max_monthly_leave(leave_type):
+    attendance_doc = frappe.get_single("Attendance Control Panel")
+    print(attendance_doc.casual_leave_per_month)
+    if leave_type == "Casual Leave":
+        return int(attendance_doc.casual_leave_per_month)
+    elif leave_type == "Sick Leave":
+        return int(attendance_doc.sick_leave_leave_per_month)

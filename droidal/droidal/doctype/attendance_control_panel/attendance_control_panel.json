@@ -1,0 +1,48 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-09-25 09:49:50.160671",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "casual_leave_per_month",
+  "sick_leave_per_month"
+ ],
+ "fields": [
+  {
+   "fieldname": "casual_leave_per_month",
+   "fieldtype": "Data",
+   "label": "Casual Leave Per Month"
+  },
+  {
+   "fieldname": "sick_leave_per_month",
+   "fieldtype": "Data",
+   "label": "Sick Leave Per Month"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2024-09-25 09:49:50.160671",
+ "modified_by": "Administrator",
+ "module": "droidal",
+ "name": "Attendance Control Panel",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
