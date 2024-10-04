@@ -224,8 +224,8 @@ def max_monthly_leave(leave_type):
     
     
 @frappe.whitelist()
-def monthly_available_leave(leave_type):
-    if not frappe.session.user == "Administrator":
+def monthly_available_leave(leave_type, cur_user):
+    if not cur_user == "Administrator":
     
         leave_allocated_per_user = 0
         leave_applied = 0
@@ -277,12 +277,14 @@ def monthly_available_leave(leave_type):
 @frappe.whitelist()
 def monthly_available_casual_leave():
     leave_type = "Casual Leave"
-    return (monthly_available_leave(leave_type))
+    cur_user = frappe.session.user
+    return (monthly_available_leave(leave_type, cur_user))
 
 @frappe.whitelist()
 def monthly_available_sick_leave():
     leave_type = "Sick Leave"
-    return (monthly_available_leave(leave_type))
+    cur_user = frappe.session.user
+    return (monthly_available_leave(leave_type, cur_user))
 
 
 
