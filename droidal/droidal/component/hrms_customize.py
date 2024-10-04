@@ -340,10 +340,12 @@ def get_employee_birthdays():
     this_month = datetime.today().strftime("%m")
     first_day = date(int(this_year), int(this_month), 1)
     last_day = last_day_of_month(date(int(this_year), int(this_month), 1))
-    emp_details =  frappe.db.get_list(
+    emp_details =  frappe.get_all(
         'Employee',
         fields=['employee_name', 'date_of_birth'],
-        filters={'status': 'Active'},
+        filters={'status': 'Active',
+                #  "date_of_birth":["between",[first_day,last_day]]
+                 },
         order_by='date_of_birth ASC'
     )
     for emp in emp_details:
@@ -354,3 +356,34 @@ def get_employee_birthdays():
         return emp_details
     else:
         return None
+    
+    
+    
+@frappe.whitelist()
+def get_new_joinees():
+    this_month_joinees = []
+    this_year = datetime.today().strftime("%Y")
+    this_month = datetime.today().strftime("%m")
+    first_day = date(int(this_year), int(this_month), 1)
+    last_day = last_day_of_month(date(int(this_year), int(this_month), 1))
+    # "date_of_joining":["between",[first_day,last_day]]
+    new_joinees_list = frappe.get_all("Employee", {},["employee_name"])
+    for emp in new_joinees_list:
+        this_month_joinees.append(emp.employee_name)
+    return this_month_joinees
+
+
+@frappe.whitelist()
+def get_anniversary():
+    anniversary_list = []
+    this_year = datetime.today().strftime("%Y")
+    this_month = datetime.today().strftime("%m")
+    first_day = date(int(this_year), int(this_month), 1)
+    last_day = last_day_of_month(date(int(this_year), int(this_month), 1))
+    
+    # "date_of_joining":["between",[first_day,last_day]]
+    new_joinees_list = frappe.get_all("Employee", {},["employee_name", "date_of_joining"])
+    for emp in new_joinees_list:
+        # if emp.date_of_joining.strftime("%m") == this_month:
+            anniversary_list.append(emp)
+    return anniversary_list
