@@ -1,6 +1,6 @@
 import frappe
 from datetime import datetime , date, timedelta
-from frappe.utils import getdate, date_diff
+from frappe.utils import getdate, date_diff, today
 
 
 def last_day_of_month(any_day):
@@ -19,16 +19,18 @@ def get_available_leaves():
         this_day = date.today()
         last_day = last_day_of_month(date(int(this_year), int(this_month), 1))
         total_leaves = 0
+        
         for leave_type in leave_types:
             if leave_type['name'] != "Permission":
                 allocations = frappe.get_all('Leave Allocation', filters={
                     'employee': employee_id[0],
                     'leave_type': leave_type['name'],
-                    'to_date': last_day
+                    'to_date':[">", this_day]
                 }, fields=['*'])
+                print(allocations)
                 if allocations:
                     
-                    total_allocated = sum([allocation['total_leaves_allocated'] for allocation in allocations])
+                    total_allocated = sum([(allocation['total_leaves_allocated'])/12 for allocation in allocations])
                     
 
                     leaves_taken = frappe.get_all('Leave Application', filters={
@@ -41,7 +43,7 @@ def get_available_leaves():
                         for leave in leaves_taken
                     ])
                     
-                    available_leaves = total_allocated - total_taken
+                    available_leaves = int(total_allocated)- total_taken
                     total_leaves += available_leaves
         return total_leaves 
     else:
@@ -219,3 +221,134 @@ def max_monthly_leave(leave_type):
         return int(attendance_doc.casual_leave_per_month)
     elif leave_type == "Sick Leave":
         return int(attendance_doc.sick_leave_leave_per_month)
+    
+    
+@frappe.whitelist()
+def monthly_available_leave(leave_type):
+    if not frappe.session.user == "Administrator":
+    
+        leave_allocated_per_user = 0
+        leave_applied = 0
+        this_month = datetime.today().strftime("%m")
+        this_year = datetime.today().strftime("%Y")
+        
+        user_id = get_cur_user_id()
+        employee_id = user_id[1]
+        attendance_control_panel = frappe.get_single("Attendance Control Panel")
+        
+        if leave_type == "Casual Leave":
+            control_panel_leave = attendance_control_panel.casual_leave_per_month
+        elif leave_type == "Sick Leave":
+            control_panel_leave = attendance_control_panel.sick_leave_per_month
+        
+        last_day = last_day_of_month(date(int(this_year), int(12), 1))
+        first_day = (date(int(this_year), int(1), 1))
+        
+        leave_allocated =  frappe.get_all("Leave Allocation", {
+                "from_date" :["<=", datetime.now()],
+                "to_date":[">=", datetime.now()],
+                "employee" : employee_id[0],
+                "leave_type": leave_type
+            },["*"])
+        
+        all_leave_application = frappe.get_all('Leave Application', filters={
+                    'employee': employee_id[0],
+                    'leave_type': leave_type,
+                    'docstatus': 1, 
+                    'from_date': ["between", [first_day,last_day]]
+                }, fields=['*'])
+        if leave_allocated:
+            for leave in leave_allocated:
+                leave_allocated_per_user +=int(leave.new_leaves_allocated)
+                
+
+            for leave in all_leave_application:
+                leave_applied += leave.total_leave_days
+                
+            leave_from_month = leave_allocated[0].from_date.strftime("%m")
+            available_leave = ((((int(this_month)-int(leave_from_month))+1)*(int(control_panel_leave))) - int(leave_applied))
+            return available_leave
+        else:
+            return "NA"
+    else:
+        return "NA"
+
+
+@frappe.whitelist()
+def monthly_available_casual_leave():
+    leave_type = "Casual Leave"
+    return (monthly_available_leave(leave_type))
+
+@frappe.whitelist()
+def monthly_available_sick_leave():
+    leave_type = "Sick Leave"
+    return (monthly_available_leave(leave_type))
+
+
+
+
+@frappe.whitelist()
+def checkin_out():
+    employee , employee_id = get_cur_user_id()
+    if employee_id != "Administrator":
+        if employee_id != None:
+            check_in_out_status = frappe.get_all("Employee Checkin", {"employee":employee_id[0]},["*"], order_by = "time desc")
+            
+            if check_in_out_status:
+                last_status = check_in_out_status[0].log_type
+            else:
+                last_status = "OUT"
+                
+            if last_status == "IN":
+                new_status = "OUT"
+            else:
+                new_status = "IN"
+                
+            check_in_out_doc = frappe.new_doc("Employee Checkin")
+            check_in_out_doc.employee = employee_id[0]
+            check_in_out_doc.log_type = new_status
+            check_in_out_doc.time = datetime.now()
+            check_in_out_doc.save()
+            return new_status
+        else:
+            frappe.throw("Employee Id not Created")
+            
+            
+            
+@frappe.whitelist()            
+def current_status():
+    employee , employee_id = get_cur_user_id()
+    if employee_id != "Administrator":
+        if employee_id != None:
+            check_in_out_status = frappe.get_all("Employee Checkin", {"employee":employee_id[0]},["*"], order_by = "time desc")
+            if check_in_out_status:
+                last_status = check_in_out_status[0].log_type
+            else:
+                last_status = "OUT"
+                
+            return last_status
+        
+        
+        
+
+@frappe.whitelist()
+def get_employee_birthdays():
+    bday_this_month_list = []
+    this_year = datetime.today().strftime("%Y")
+    this_month = datetime.today().strftime("%m")
+    first_day = date(int(this_year), int(this_month), 1)
+    last_day = last_day_of_month(date(int(this_year), int(this_month), 1))
+    emp_details =  frappe.db.get_list(
+        'Employee',
+        fields=['employee_name', 'date_of_birth'],
+        filters={'status': 'Active'},
+        order_by='date_of_birth ASC'
+    )
+    for emp in emp_details:
+        print(emp.date_of_birth.strftime("%m"))
+        if emp.date_of_birth.strftime("%m") == this_month:
+            bday_this_month_list.append(emp)
+    if emp_details:
+        return emp_details
+    else:
+        return None
