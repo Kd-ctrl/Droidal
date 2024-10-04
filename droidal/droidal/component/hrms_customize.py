@@ -2,7 +2,6 @@ import frappe
 from datetime import datetime , date, timedelta
 from frappe.utils import getdate, date_diff, today
 
-
 def last_day_of_month(any_day):
     next_month = any_day.replace(day=28) + timedelta(days=4)
     return next_month - timedelta(days=next_month.day)
@@ -27,7 +26,7 @@ def get_available_leaves():
                     'leave_type': leave_type['name'],
                     'to_date':[">", this_day]
                 }, fields=['*'])
-                print(allocations)
+                # print(allocations)
                 if allocations:
                     
                     total_allocated = sum([(allocation['total_leaves_allocated'])/12 for allocation in allocations])
@@ -192,7 +191,7 @@ def check_in_out(emp ,value, time):
     check_in_doc.employee = emp
     check_in_doc.log_type = value
     check_in_doc.time = time
-    print(type(datetime.now()), type(time))
+    # print(type(datetime.now()), type(time))
     check_in_doc.save()
     frappe.db.commit()
     return True
@@ -216,7 +215,7 @@ def get_employee_id():
 @frappe.whitelist()
 def max_monthly_leave(leave_type):
     attendance_doc = frappe.get_single("Attendance Control Panel")
-    print(attendance_doc.casual_leave_per_month)
+    # print(attendance_doc.casual_leave_per_month)
     if leave_type == "Casual Leave":
         return int(attendance_doc.casual_leave_per_month)
     elif leave_type == "Sick Leave":
@@ -338,8 +337,11 @@ def get_employee_birthdays():
     bday_this_month_list = []
     this_year = datetime.today().strftime("%Y")
     this_month = datetime.today().strftime("%m")
-    first_day = date(int(this_year), int(this_month), 1)
-    last_day = last_day_of_month(date(int(this_year), int(this_month), 1))
+    today = datetime.today()
+    last_date = last_day_of_month(date(int(this_year), int(this_month), 1)).strftime("%d")
+    last_day = today + timedelta(days=int(last_date))
+    # first_day = date(int(this_year), int(this_month), 1)
+    # last_day = last_day_of_month(date(int(this_year), int(this_month), 1))
     emp_details =  frappe.get_all(
         'Employee',
         fields=['employee_name', 'date_of_birth'],
@@ -349,7 +351,7 @@ def get_employee_birthdays():
         order_by='date_of_birth ASC'
     )
     for emp in emp_details:
-        print(emp.date_of_birth.strftime("%m"))
+        # print(emp.date_of_birth.strftime("%m"))
         if emp.date_of_birth.strftime("%m") == this_month:
             bday_this_month_list.append(emp)
     if emp_details:
@@ -364,8 +366,11 @@ def get_new_joinees():
     this_month_joinees = []
     this_year = datetime.today().strftime("%Y")
     this_month = datetime.today().strftime("%m")
-    first_day = date(int(this_year), int(this_month), 1)
-    last_day = last_day_of_month(date(int(this_year), int(this_month), 1))
+    today = datetime.today()
+    last_date = last_day_of_month(date(int(this_year), int(this_month), 1)).strftime("%d")
+    last_day = today + timedelta(days=int(last_date))
+    # first_day = date(int(this_year), int(this_month), 1)
+    # last_day = last_day_of_month(date(int(this_year), int(this_month), 1))
     # "date_of_joining":["between",[first_day,last_day]]
     new_joinees_list = frappe.get_all("Employee", {},["employee_name"])
     for emp in new_joinees_list:
@@ -378,8 +383,12 @@ def get_anniversary():
     anniversary_list = []
     this_year = datetime.today().strftime("%Y")
     this_month = datetime.today().strftime("%m")
-    first_day = date(int(this_year), int(this_month), 1)
-    last_day = last_day_of_month(date(int(this_year), int(this_month), 1))
+    today = datetime.today()
+    last_date = last_day_of_month(date(int(this_year), int(this_month), 1)).strftime("%d")
+    last_day = today + timedelta(days=int(last_date))
+
+    # first_day = date(int(this_year), int(this_month), 1)
+   
     
     # "date_of_joining":["between",[first_day,last_day]]
     new_joinees_list = frappe.get_all("Employee", {},["employee_name", "date_of_joining"])
@@ -387,3 +396,14 @@ def get_anniversary():
         # if emp.date_of_joining.strftime("%m") == this_month:
             anniversary_list.append(emp)
     return anniversary_list
+
+
+@frappe.whitelist()
+def get_upcoming_leaves():
+    employee , employee_id = get_cur_user_id()
+    if employee != "Administrator" and employee_id:
+        employee_doc = frappe.get_doc("Employee",employee_id)
+        user_holiday_list = employee_doc.holiday_list
+        if user_holiday_list:
+            holiday_list = frappe.get_all("Holiday",{"weekly_off":False, "parent":user_holiday_list},["description","holiday_date"],order_by= "holiday_date asc")
+            return holiday_list

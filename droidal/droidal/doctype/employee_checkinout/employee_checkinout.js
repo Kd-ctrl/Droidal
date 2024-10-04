@@ -1,7 +1,8 @@
 // Copyright (c) 2024, droidal and contributors
 // For license information, please see license.txt
 frappe.ui.form.on('Employee Checkinout', {
-	onload:async function(frm){
+	refresh:async function(frm){
+		frm.set_df_property('status', 'hidden', true);
 		frm.disable_save();
 		frappe.call({
 		method:"droidal.droidal.component.hrms_customize.current_status",
@@ -11,8 +12,6 @@ frappe.ui.form.on('Employee Checkinout', {
 		})
 		
 	}
-
-
 
 })
 
