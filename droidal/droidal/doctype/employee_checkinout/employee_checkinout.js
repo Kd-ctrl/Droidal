@@ -33,3 +33,9 @@ frappe.ui.form.on('Employee Checkinout', {
 		})
 	}
 });
+
+
+// frappe.ui.form.on('Employee Checkinout', {
+// 	onload:async function(frm){
+		
+// 	}})
