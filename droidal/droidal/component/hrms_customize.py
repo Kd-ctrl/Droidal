@@ -263,9 +263,10 @@ def monthly_available_leave(leave_type, cur_user):
 
             for leave in all_leave_application:
                 leave_applied += leave.total_leave_days
-                
-            leave_from_month = leave_allocated[0].from_date.strftime("%m")
-            available_leave = ((((int(this_month)-int(leave_from_month))+1)*(int(control_panel_leave))) - int(leave_applied))
+            
+            available_leave = leave_allocated_per_user - leave_applied    
+            # leave_from_month = leave_allocated[0].from_date.strftime("%m")
+            # available_leave = ((((int(this_month)-int(leave_from_month))+1)*(int(control_panel_leave))) - int(leave_applied))
             return available_leave
         else:
             return "NA"
