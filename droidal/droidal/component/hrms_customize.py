@@ -498,3 +498,20 @@ def check_current_log_type(start_time, end_time, emp_id):
         return last_log_type
     else:
         return "NA"
+    
+    
+    
+
+@frappe.whitelist()
+def get_active_employees():
+    active_employees = []
+    # Fetch active employees (you can modify the filter as needed)
+    employees = frappe.get_all("Employee",{"status":"Active"},["name","employee_name"])
+    for employee in employees:
+        check_in_out_status = frappe.get_all("Employee Checkin", {"employee":employee["name"]},["log_type"], order_by = "time desc")
+        if check_in_out_status:
+            if check_in_out_status[0].log_type == "IN":
+                active_emp = (str(employee["employee_name"]))
+                active_employees.append(str(employee["employee_name"]))
+    print(active_employees)
+    return active_employees

@@ -1,0 +1,12 @@
+<h1>Currently Logged-In Employees</h1>
+    <div id="employee-list">
+        {% if employees and employees | length > 0 %}
+            <ul>
+                {% for employee in employees %}
+                    <li>{{ employee.employee_name }} (Employee Number: {{ employee.employee_number }})</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No employees are currently logged in.</p>
+        {% endif %}
+    </div>

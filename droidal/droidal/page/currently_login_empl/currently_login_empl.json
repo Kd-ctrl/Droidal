@@ -1,0 +1,23 @@
+{
+ "content": null,
+ "creation": "2024-10-22 16:53:12.446200",
+ "docstatus": 0,
+ "doctype": "Page",
+ "idx": 0,
+ "modified": "2024-10-22 16:53:12.446200",
+ "modified_by": "Administrator",
+ "module": "droidal",
+ "name": "currently-login-empl",
+ "owner": "Administrator",
+ "page_name": "currently-login-empl",
+ "roles": [
+  {
+   "role": "HR Manager"
+  }
+ ],
+ "script": null,
+ "standard": "Yes",
+ "style": null,
+ "system_page": 0,
+ "title": "Active Employees"
+}

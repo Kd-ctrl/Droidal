@@ -1,0 +1,33 @@
+{
+ "charts": [],
+ "content": "[{\"id\":\"R1rS3hxUAJ\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Active Employees\",\"col\":12}}]",
+ "creation": "2024-10-22 17:18:27.411697",
+ "custom_blocks": [
+  {
+   "custom_block_name": "Active Employees",
+   "label": "Active Employees"
+  }
+ ],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "unhide",
+ "idx": 0,
+ "is_hidden": 0,
+ "label": "Active Employees",
+ "links": [],
+ "modified": "2024-10-22 19:22:13.694339",
+ "modified_by": "Administrator",
+ "module": "droidal",
+ "name": "Active Employees",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [],
+ "sequence_id": 32.0,
+ "shortcuts": [],
+ "title": "Active Employees"
+}
