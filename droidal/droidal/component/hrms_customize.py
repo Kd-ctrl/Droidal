@@ -336,13 +336,18 @@ def current_status():
 @frappe.whitelist()
 def get_employee_birthdays():
     bday_this_month_list = []
+    this_day = datetime.today().strftime("%d")
     this_year = datetime.today().strftime("%Y")
     this_month = datetime.today().strftime("%m")
+    if int(this_month) == 12:
+        next_month= 1
+    else:
+        next_month = int(this_month)+1
     today = datetime.today()
-    last_date = last_day_of_month(date(int(this_year), int(this_month), 1)).strftime("%d")
-    last_day = today + timedelta(days=int(last_date))
-    # first_day = date(int(this_year), int(this_month), 1)
-    # last_day = last_day_of_month(date(int(this_year), int(this_month), 1))
+    # last_date = last_day_of_month(date(int(this_year), int(this_month), 1)).strftime("%d")
+    # last_day = today + timedelta(days=int(last_date))
+    first_day = date(int(this_year), int(this_month), 1)
+    last_day = last_day_of_month(date(int(this_year), int(this_month), 1))
     emp_details =  frappe.get_all(
         'Employee',
         fields=['employee_name', 'date_of_birth'],
@@ -353,10 +358,10 @@ def get_employee_birthdays():
     )
     for emp in emp_details:
         # print(emp.date_of_birth.strftime("%m"))
-        if emp.date_of_birth.strftime("%m") == this_month:
+        if emp.date_of_birth.strftime("%m") == this_month and int(emp.date_of_birth.strftime("%d")) >= int(this_day)or emp.date_of_birth.strftime("%m") == str(next_month):
             bday_this_month_list.append(emp)
-    if emp_details:
-        return emp_details
+    if bday_this_month_list:
+        return bday_this_month_list
     else:
         return None
     
@@ -367,13 +372,12 @@ def get_new_joinees():
     this_month_joinees = []
     this_year = datetime.today().strftime("%Y")
     this_month = datetime.today().strftime("%m")
-    today = datetime.today()
-    last_date = last_day_of_month(date(int(this_year), int(this_month), 1)).strftime("%d")
-    last_day = today + timedelta(days=int(last_date))
+    last_day = datetime.today()
+    first_day = last_day - timedelta(days=30)
+    
+    # last_date = last_day_of_month(date(int(this_year), int(this_month), 1))
     # first_day = date(int(this_year), int(this_month), 1)
-    # last_day = last_day_of_month(date(int(this_year), int(this_month), 1))
-    # "date_of_joining":["between",[first_day,last_day]]
-    new_joinees_list = frappe.get_all("Employee", {},["employee_name"])
+    new_joinees_list = frappe.get_all("Employee", {"date_of_joining":["between",[first_day,last_day]]},["employee_name"],order_by = "date_of_joining desc")
     for emp in new_joinees_list:
         this_month_joinees.append(emp.employee_name)
     return this_month_joinees
@@ -384,9 +388,14 @@ def get_anniversary():
     anniversary_list = []
     this_year = datetime.today().strftime("%Y")
     this_month = datetime.today().strftime("%m")
+    this_day = datetime.today().strftime("%d")
     today = datetime.today()
     last_date = last_day_of_month(date(int(this_year), int(this_month), 1)).strftime("%d")
     last_day = today + timedelta(days=int(last_date))
+    if int(this_month) == 12:
+        next_month= 1
+    else:
+        next_month = int(this_month)+1
 
     # first_day = date(int(this_year), int(this_month), 1)
    
@@ -394,8 +403,8 @@ def get_anniversary():
     # "date_of_joining":["between",[first_day,last_day]]
     new_joinees_list = frappe.get_all("Employee", {},["employee_name", "date_of_joining"])
     for emp in new_joinees_list:
-        # if emp.date_of_joining.strftime("%m") == this_month:
-            anniversary_list.append(emp)
+        if emp.date_of_joining.strftime("%m") == this_month and emp.date_of_joining.strftime("%Y") != this_year and int(emp.date_of_joining.strftime("%d")) >= int(this_day) or emp.date_of_joining.strftime("%m") == str(next_month) :
+                anniversary_list.append(emp)
     return anniversary_list
 
 
@@ -505,14 +514,20 @@ def check_current_log_type(start_time, end_time, emp_id):
 
 @frappe.whitelist()
 def get_active_employees():
+    employee_list =[]
     active_employees = []
     # Fetch active employees (you can modify the filter as needed)
     employees = frappe.get_all("Employee",{"status":"Active"},["name","employee_name"])
+    
     for employee in employees:
         check_in_out_status = frappe.get_all("Employee Checkin", {"employee":employee["name"]},["log_type"], order_by = "time desc")
-        if check_in_out_status:
-            if check_in_out_status[0].log_type == "IN":
-                active_emp = (str(employee["employee_name"]))
-                active_employees.append(str(employee["employee_name"]))
-    print(active_employees)
+        if check_in_out_status and check_in_out_status[0].log_type == "IN":
+            active_employees.append([employee["employee_name"],check_in_out_status[0].log_type])
+    for employee in employees:
+        check_in_out_status = frappe.get_all("Employee Checkin", {"employee":employee["name"]},["log_type"], order_by = "time desc")
+        if check_in_out_status and check_in_out_status[0].log_type == "OUT":
+            active_employees.append([employee["employee_name"],check_in_out_status[0].log_type])
+    for employee in employees:
+        if employee["employee_name"] not in [item for sublist in active_employees for item in sublist]:
+            active_employees.append([employee["employee_name"],"OUT"])
     return active_employees
