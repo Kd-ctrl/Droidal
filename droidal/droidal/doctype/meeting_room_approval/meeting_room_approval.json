@@ -8,6 +8,11 @@
  "engine": "InnoDB",
  "field_order": [
   "room_id",
+  "section_break_4m6x4",
+  "date",
+  "column_break_hxxxl",
+  "time",
+  "section_break_cctjk",
   "reason",
   "status",
   "amended_from"
@@ -37,11 +42,35 @@
    "hidden": 1,
    "label": "Amend From",
    "options": "Meeting Room Approval"
+  },
+  {
+   "default": "now",
+   "fieldname": "time",
+   "fieldtype": "Time",
+   "label": "Time"
+  },
+  {
+   "default": "now",
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "label": "Date"
+  },
+  {
+   "fieldname": "section_break_4m6x4",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_hxxxl",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_cctjk",
+   "fieldtype": "Section Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-10-22 20:07:24.164411",
+ "modified": "2024-10-28 22:04:46.022164",
  "modified_by": "Administrator",
  "module": "droidal",
  "name": "Meeting Room Approval",
