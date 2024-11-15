@@ -356,12 +356,39 @@ def get_employee_birthdays():
                  },
         order_by='date_of_birth ASC'
     )
+    date_list = []
     for emp in emp_details:
         # print(emp.date_of_birth.strftime("%m"))
         if emp.date_of_birth.strftime("%m") == this_month and int(emp.date_of_birth.strftime("%d")) >= int(this_day)or emp.date_of_birth.strftime("%m") == str(next_month):
+            date_list.append(emp.date_of_birth)
             bday_this_month_list.append(emp)
-    if bday_this_month_list:
-        return bday_this_month_list
+    print(date_list)
+    sorted_dates = sorted(date_list, key=lambda date: date.month)
+    print(sorted_dates)
+    bday_month_list = []
+    for each_day in sorted_dates:
+        for each_bday in bday_this_month_list:
+            if each_day == each_bday.date_of_birth:
+                bday_this_month_list.remove(each_bday)
+                bday_month_list.append(each_bday)
+     
+    month_day = []           
+    for every_birthday in bday_month_list:
+        months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+        every_birthday.date_of_birth = f"{months[int(every_birthday.date_of_birth.month)-1]} {every_birthday.date_of_birth.day}"
+        month_day.append(every_birthday.date_of_birth)
+    
+    sorted_dates = sorted(month_day, key=lambda date: datetime.strptime(date, "%B %d"))
+    
+    finished_bday_list = []
+    for each_day in sorted_dates:
+        for each_bday in bday_month_list:
+            if each_day == each_bday.date_of_birth:
+                bday_month_list.remove(each_bday)
+                finished_bday_list.append(each_bday)
+        
+    if finished_bday_list:
+        return finished_bday_list
     else:
         return None
     
