@@ -362,9 +362,9 @@ def get_employee_birthdays():
         if emp.date_of_birth.strftime("%m") == this_month and int(emp.date_of_birth.strftime("%d")) >= int(this_day)or emp.date_of_birth.strftime("%m") == str(next_month):
             date_list.append(emp.date_of_birth)
             bday_this_month_list.append(emp)
-    print(date_list)
+    # print(date_list)
     sorted_dates = sorted(date_list, key=lambda date: date.month)
-    print(sorted_dates)
+    # print(sorted_dates)
     bday_month_list = []
     for each_day in sorted_dates:
         for each_bday in bday_this_month_list:
