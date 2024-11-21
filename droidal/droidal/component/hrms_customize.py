@@ -558,3 +558,47 @@ def get_active_employees():
         if employee["employee_name"] not in [item for sublist in active_employees for item in sublist]:
             active_employees.append([employee["employee_name"],"OUT"])
     return active_employees
+
+
+@frappe.whitelist()
+def get_employees_with_stars():
+    this_year = datetime.today().strftime("%Y")
+    this_month = datetime.today().strftime("%m")
+    this_day = date.today()
+    last_day = last_day_of_month(date(int(this_year), int(this_month), 1))
+    first_day = (date(int(this_year), int(this_month), 1))
+    emp_all = frappe.get_all('Task',{},["*"])
+    emp_with_star = frappe.get_all(
+        'Task',
+        fields=['name', 'custom_assign_to','custom_rating','custom_employee_name'],
+        filters={"completed_on":["Between",[first_day,last_day]]},
+        order_by='custom_rating desc'
+    )
+    get_emp_list = frappe.get_all("Employee",filters = {"status":"Active"},pluck = "name")
+    emp_dict= {}
+    for each_emp in get_emp_list:
+        per_emp_star = 0
+        for emp in emp_all:
+            if each_emp == emp.custom_assign_to:
+                if emp.custom_rating:
+                    per_emp_star += emp.custom_rating
+        emp_dict[emp.custom_employee_name] = per_emp_star * 5
+        
+    sorted_employees = sorted(
+        [{"employee": emp, "star_count": stars} for emp, stars in emp_dict.items() if stars > 0],
+        key=lambda x: x["star_count"],
+        reverse=True
+    )
+    return sorted_employees
+
+
+
+@frappe.whitelist()
+def get_rockstar():
+    this_year = datetime.today().strftime("%Y")
+    this_month = datetime.today().strftime("%m")
+    this_day = date.today()
+    last_day = last_day_of_month(date(int(this_year), int(this_month), 1))
+    first_day = (date(int(this_year), int(this_month), 1))
+    emp = frappe.get_all("Employee Of the Month",filters={"posting_date":["Between",[first_day,last_day]]},fields =["*"])
+    return emp
