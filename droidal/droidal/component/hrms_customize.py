@@ -449,74 +449,30 @@ def get_upcoming_leaves():
         
 @frappe.whitelist()
 def current_work_timings():
-    first_in_record = None
-    diff_time = None
-    date = datetime.today().date()
-    tomorrow = datetime.today().date()+timedelta(days=1)
-    employee , employee_id = get_cur_user_id()
+    from datetime import datetime
+    employee, employee_id = get_cur_user_id()
     if employee != "Administrator" and employee_id:
-        employee_doc = frappe.get_all("Employee",{"name" : employee_id[0]},["*"])[0]
-        employee_shift = employee_doc.default_shift
-        if employee_shift:
-            shift_doc = frappe.get_all("Shift Type",{"name":employee_shift},["*"])[0]
-            if shift_doc.begin_check_in_before_shift_start_time:
-                start_time_begin = shift_doc.begin_check_in_before_shift_start_time
-            else:
-                start_time_begin = 0
-            if shift_doc.check_out_after_shift_end_time:
-                end_time_begin = shift_doc.check_out_after_shift_end_time
-            else:
-                end_time_begin = 0
-            start_time = shift_doc.start_time
-            end_time = shift_doc.end_time
-            if end_time> start_time:
-                str_start_date_time = f"{date} {start_time}"
-                str_end_date_time = f"{date} {end_time}"
-            else:
-                str_start_date_time = f"{date} {start_time}"
-                str_end_date_time = f"{tomorrow} {end_time}"
-                
-            start_date_time = convert_str_to_datetime(str_start_date_time)
-            end_date_time = convert_str_to_datetime(str_end_date_time)
-            new_start_time = start_date_time - timedelta(minutes = start_time_begin)
-            new_end_time = end_date_time + timedelta(minutes= end_time_begin)
-            get_employee_check_in = frappe.get_all("Employee Checkin", {"time":["between",[new_start_time,new_end_time]],"employee" : employee_id[0]},["*"], order_by = "name asc")
-            if get_employee_check_in:
-                last_check_in = get_employee_check_in[-1]
-                last_log_type = last_check_in.log_type
-                for employee_check_in in get_employee_check_in:
-                    if first_in_record == None:
-                        if employee_check_in.log_type == "IN":
-                            first_in_record = employee_check_in.name
-                            in_time = employee_check_in.time
-                    elif first_in_record != None:
-                        if employee_check_in.log_type == "OUT":
-                            out_time = employee_check_in.time
-                            if diff_time != None:
-                                diff_time += out_time - in_time
-                            else:
-                                diff_time = out_time - in_time
-                        elif employee_check_in.log_type == "IN":
-                            in_time = employee_check_in.time  
-                            
-                if diff_time == None:
-                    overall_time = (datetime.today() - in_time)
-                elif last_log_type == "IN":
-                    overall_time = diff_time + (datetime.today() - in_time)
-                else:
-                    overall_time = diff_time
-                
-                split_time = str(overall_time).split(":")
-                hrs = split_time[0]
-                min = split_time[1]
-                sec = split_time[2].split(".")[0]
-                return (f"{hrs}:{min}:{sec}",last_log_type, new_start_time, new_end_time, employee_id[0])
-            else:
-                return "NA"        
-        else:
-            return "NA"
+        checkins = frappe.get_all(
+            "Employee Checkin",
+            {"employee": employee_id[0]},
+            ["*"],
+            order_by="time desc"
+        )
+        for record in checkins:  # Find the latest "IN"
+            if record.log_type == "IN":
+                last_in_time = record.time
+                # Optionally, check if it is after an "OUT" (for robust logic)
+                elapsed = datetime.now() - last_in_time
+                hrs, rem = divmod(elapsed.total_seconds(), 3600)
+                mins, secs = divmod(rem, 60)
+                return f"{int(hrs)}:{int(mins)}:{int(secs)}", "IN", employee_id[0]
+            
+            elif record.log_type == "OUT":
+                return "0:0:0", "OUT", employee_id[0]
+        return "NA"
     else:
-        return "NA"    
+        return "NA"
+
             
             
             
@@ -527,12 +483,28 @@ def convert_str_to_datetime(str):
 
 
 @frappe.whitelist()
-def check_current_log_type(start_time, end_time, emp_id):
-    get_employee_check_in = frappe.get_all("Employee Checkin", {"time":["between",[start_time,end_time]],"employee" : emp_id},["*"], order_by = "name asc")
+def check_current_log_type(emp_id):
+    get_employee_check_in = frappe.get_all("Employee Checkin", {"employee" : emp_id},["*"], order_by = "name asc")
     if get_employee_check_in:
         last_check_in = get_employee_check_in[-1]
         last_log_type = last_check_in.log_type
-        return last_log_type
+
+        if last_check_in.log_type == "IN":
+            last_in_time = last_check_in.time
+            # Optionally, check if it is after an "OUT" (for robust logic)
+            elapsed = datetime.now() - last_in_time
+            hrs, rem = divmod(elapsed.total_seconds(), 3600)
+
+            if int(hrs)>7:
+                check_out_doc = frappe.get_doc({
+                        "doctype": "Employee Checkin",
+                        "employee": emp_id,
+                        "time": datetime.now(),           
+                        "log_type": "OUT",        
+                    })
+                check_out_doc.insert()
+                frappe.db.commit()
+            return last_log_type
     else:
         return "NA"
     
