@@ -428,7 +428,7 @@ def get_anniversary():
    
     
     # "date_of_joining":["between",[first_day,last_day]]
-    new_joinees_list = frappe.get_all("Employee", {},["employee_name", "date_of_joining"])
+    new_joinees_list = frappe.get_all("Employee", {'status': 'Active'},["employee_name", "date_of_joining"])
     for emp in new_joinees_list:
         if emp.date_of_joining.strftime("%m") == this_month and emp.date_of_joining.strftime("%Y") != this_year and int(emp.date_of_joining.strftime("%d")) >= int(this_day) or emp.date_of_joining.strftime("%m") == str(next_month) :
                 anniversary_list.append(emp)

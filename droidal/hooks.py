@@ -124,6 +124,12 @@ app_include_js = "/assets/droidal/js/workspace_hide.js"
 # 	}
 # }
 
+doc_events = {
+  "Salary Slip":{
+    "after_insert": "droidal.salary_slip.auto_assign_employee"
+  }
+}
+
 # Scheduled Tasks
 # ---------------
 
@@ -153,9 +159,9 @@ app_include_js = "/assets/droidal/js/workspace_hide.js"
 # Overriding Methods
 # ------------------------------
 #
-# override_whitelisted_methods = {
-# 	"frappe.desk.doctype.event.event.get_events": "droidal.event.get_events"
-# }
+override_whitelisted_methods = {
+ 	"frappe.desk.reportview.get_print_format": "droidal.utils.get_salary_slip_format"
+ }
 #
 # each overriding function accepts a `data` argument;
 # generated from the base implementation of the doctype dashboard,
