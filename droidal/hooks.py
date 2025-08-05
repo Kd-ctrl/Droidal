@@ -133,23 +133,23 @@ doc_events = {
 # Scheduled Tasks
 # ---------------
 
-# scheduler_events = {
+scheduler_events = {
 # 	"all": [
 # 		"droidal.tasks.all"
 # 	],
 # 	"daily": [
 # 		"droidal.tasks.daily"
 # 	],
-# 	"hourly": [
-# 		"droidal.tasks.hourly"
-# 	],
+"hourly": [
+		"droidal.hrms_customize.logout_employee"
+	]
 # 	"weekly": [
 # 		"droidal.tasks.weekly"
 # 	],
 # 	"monthly": [
 # 		"droidal.tasks.monthly"
 # 	],
-# }
+}
 
 # Testing
 # -------

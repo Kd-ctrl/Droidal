@@ -574,3 +574,33 @@ def get_rockstar():
     first_day = (date(int(this_year), int(this_month), 1))
     emp = frappe.get_all("Employee Of the Month",filters={"posting_date":["Between",[first_day,last_day]]},fields =["*"])
     return emp
+
+
+
+@frappe.whitelist()
+def logout_employee():
+    employee_list= frappe.get_all("Employee",{"status":"active"},["name"])
+    for employee in employee_list:
+        get_employee_check_in = frappe.get_all("Employee Checkin", {"employee" : employee.name},["*"], order_by = "name asc")
+        if get_employee_check_in:
+            last_check_in = get_employee_check_in[-1]
+            last_log_type = last_check_in.log_type
+
+            if last_check_in.log_type == "IN":
+                last_in_time = last_check_in.time
+                # Optionally, check if it is after an "OUT" (for robust logic)
+                elapsed = datetime.now() - last_in_time
+                hrs, rem = divmod(elapsed.total_seconds(), 3600)
+
+                if int(hrs)>7:
+                    check_out_doc = frappe.get_doc({
+                            "doctype": "Employee Checkin",
+                            "employee": employee.name,
+                            "time": datetime.now(),           
+                            "log_type": "OUT",        
+                        })
+                    check_out_doc.insert()
+                    frappe.db.commit()
+                return last_log_type
+        else:
+            return "NA"
