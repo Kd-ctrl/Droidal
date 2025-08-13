@@ -157,3 +157,34 @@ def get_all_salary_slip():
             return {"status": "success", "slip_name": all_salary_slip}
     except Exception as e:
         return {"status":"error","message":str(e)}
+
+
+
+@frappe.whitelist()
+def get_sal_structure(sal_structure):
+    try:
+        # Query to fetch documents from child table
+        results = frappe.db.sql("""
+            SELECT *
+            FROM `tabSalary Detail`
+            WHERE parent = %s
+        """, (sal_structure,), as_dict=True)
+
+
+        earnings = []
+        deductions = []
+
+        for row in results:
+            if row.get("parentfield") == "earnings":
+                earnings.append(row)
+            if row.get("parentfield") == "deductions":
+                deductions.append(row)
+
+        if earnings or deductions:
+            return {"status": "success", "earnings": earnings, "deductions": deductions}
+        else:
+            return {"status": "not_found", "message": "No salary structure found."}
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "get_sal_structure API")
+        return {"status": "error", "message": str(e)}

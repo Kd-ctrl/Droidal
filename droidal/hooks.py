@@ -140,9 +140,9 @@ scheduler_events = {
 # 	"daily": [
 # 		"droidal.tasks.daily"
 # 	],
-"hourly": [
-		"droidal.hrms_customize.logout_employee"
-	]
+# "hourly": [
+# 		"droidal.hrms_customize.logout_employee"
+# 	],
 # 	"weekly": [
 # 		"droidal.tasks.weekly"
 # 	],

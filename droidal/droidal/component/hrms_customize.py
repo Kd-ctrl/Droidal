@@ -490,20 +490,20 @@ def check_current_log_type(emp_id):
         last_log_type = last_check_in.log_type
 
         if last_check_in.log_type == "IN":
-            last_in_time = last_check_in.time
-            # Optionally, check if it is after an "OUT" (for robust logic)
-            elapsed = datetime.now() - last_in_time
-            hrs, rem = divmod(elapsed.total_seconds(), 3600)
+        #     last_in_time = last_check_in.time
+        #     # Optionally, check if it is after an "OUT" (for robust logic)
+        #     elapsed = datetime.now() - last_in_time
+        #     hrs, rem = divmod(elapsed.total_seconds(), 3600)
 
-            if int(hrs)>7:
-                check_out_doc = frappe.get_doc({
-                        "doctype": "Employee Checkin",
-                        "employee": emp_id,
-                        "time": datetime.now(),           
-                        "log_type": "OUT",        
-                    })
-                check_out_doc.insert()
-                frappe.db.commit()
+        #     if int(hrs)>7:
+        #         check_out_doc = frappe.get_doc({
+        #                 "doctype": "Employee Checkin",
+        #                 "employee": emp_id,
+        #                 "time": datetime.now(),           
+        #                 "log_type": "OUT",        
+        #             })
+        #         check_out_doc.insert()
+        #         frappe.db.commit()
             return last_log_type
     else:
         return "NA"
@@ -577,30 +577,278 @@ def get_rockstar():
 
 
 
+# @frappe.whitelist()
+# def logout_employee():
+#     employee_list= frappe.get_all("Employee",{"status":"active"},["name"])
+#     for employee in employee_list:
+#         get_employee_check_in = frappe.get_all("Employee Checkin", {"employee" : employee.name},["*"], order_by = "name asc")
+#         if get_employee_check_in:
+#             last_check_in = get_employee_check_in[-1]
+#             last_log_type = last_check_in.log_type
+
+#             if last_check_in.log_type == "IN":
+#                 last_in_time = last_check_in.time
+#                 # Optionally, check if it is after an "OUT" (for robust logic)
+#                 elapsed = datetime.now() - last_in_time
+#                 hrs, rem = divmod(elapsed.total_seconds(), 3600)
+
+#                 if int(hrs)>7:
+#                     check_out_doc = frappe.get_doc({
+#                             "doctype": "Employee Checkin",
+#                             "employee": employee.name,
+#                             "time": datetime.now(),           
+#                             "log_type": "OUT",        
+#                         })
+#                     check_out_doc.insert()
+#                     frappe.db.commit()
+#                 return last_log_type
+#         else:
+#             return "NA"
+
+import frappe
+from datetime import datetime, timedelta, date
+from frappe.utils import getdate, date_diff, today
+import calendar
+
+def last_day_of_month(any_day):
+    next_month = any_day.replace(day=28) + timedelta(days=4)
+    return next_month - timedelta(days=next_month.day)
+
 @frappe.whitelist()
-def logout_employee():
-    employee_list= frappe.get_all("Employee",{"status":"active"},["name"])
-    for employee in employee_list:
-        get_employee_check_in = frappe.get_all("Employee Checkin", {"employee" : employee.name},["*"], order_by = "name asc")
-        if get_employee_check_in:
-            last_check_in = get_employee_check_in[-1]
-            last_log_type = last_check_in.log_type
+def get_available_leaves():
+    employee, employee_id = get_cur_user_id()
+    if employee != "Administrator" and employee_id:
+        leave_balances = {}
+        leave_types = frappe.get_all('Leave Type', fields=['name'])
+        this_year = datetime.today().strftime("%Y")
+        this_month = datetime.today().strftime("%m")
+        this_day = date.today()
+        last_day = last_day_of_month(date(int(this_year), int(this_month), 1))
+        total_leaves = 0
+        
+        for leave_type in leave_types:
+            if leave_type['name'] != "Permission":
+                allocations = frappe.get_all('Leave Allocation', filters={
+                    'employee': employee_id[0],
+                    'leave_type': leave_type['name'],
+                    'to_date': [">", this_day]
+                }, fields=['*'])
+                
+                if allocations:
+                    total_allocated = sum([(allocation['total_leaves_allocated'])/12 for allocation in allocations])
 
-            if last_check_in.log_type == "IN":
-                last_in_time = last_check_in.time
-                # Optionally, check if it is after an "OUT" (for robust logic)
-                elapsed = datetime.now() - last_in_time
-                hrs, rem = divmod(elapsed.total_seconds(), 3600)
+                    leaves_taken = frappe.get_all('Leave Application', filters={
+                        'employee': employee_id[0],
+                        'leave_type': leave_type['name'],
+                        'docstatus': 1  
+                    }, fields=['from_date', 'to_date'])
+                    
+                    total_taken = sum([
+                        date_diff(getdate(leave['to_date']), getdate(leave['from_date'])) + 1
+                        for leave in leaves_taken
+                    ])
+                    
+                    available_leaves = int(total_allocated) - total_taken
+                    total_leaves += available_leaves
+        return total_leaves 
+    else:
+        return "NA"
 
-                if int(hrs)>7:
-                    check_out_doc = frappe.get_doc({
-                            "doctype": "Employee Checkin",
-                            "employee": employee.name,
-                            "time": datetime.now(),           
-                            "log_type": "OUT",        
-                        })
-                    check_out_doc.insert()
-                    frappe.db.commit()
-                return last_log_type
-        else:
-            return "NA"
+def get_cur_user_id():
+    employee = frappe.session.user
+    if employee != "Administrator":
+        employee_id = frappe.get_all("Employee", {"user_id": employee}, pluck="name")
+        if employee_id:
+            return employee, employee_id
+    return employee, None
+
+@frappe.whitelist()
+def create_salary_slip_with_start_date_logic(employee_id, month_name, year=None):
+    """
+    Calculate payroll and create Salary Slip with start date logic
+    Uses employee start date if it's after month start, otherwise uses month start
+    """
+    
+    # If year not provided, use current year
+    if not year:
+        year = datetime.now().year
+    
+    # Convert month name to month number
+    month_map = {
+        'january': 1, 'february': 2, 'march': 3, 'april': 4,
+        'may': 5, 'june': 6, 'july': 7, 'august': 8,
+        'september': 9, 'october': 10, 'november': 11, 'december': 12
+    }
+    
+    month_num = month_map.get(month_name.lower())
+    if not month_num:
+        frappe.throw(f"Invalid month name: {month_name}")
+    
+    # Get month start and end dates
+    month_start_date = datetime(year, month_num, 1).date()
+    last_day = calendar.monthrange(year, month_num)[1]
+    month_end_date = datetime(year, month_num, last_day).date()
+    
+    # Get employee details
+    employee = frappe.get_doc("Employee", employee_id)
+    
+    # Determine start date based on employee date_of_joining
+    employee_start_date = employee.date_of_joining
+    
+    if employee_start_date and employee_start_date > month_start_date:
+        start_date = employee_start_date
+    else:
+        start_date = month_start_date
+    
+    end_date = month_end_date
+    
+    # Convert to string format for processing
+    start_date_str = start_date.strftime('%Y-%m-%d')
+    end_date_str = end_date.strftime('%Y-%m-%d')
+    
+    # Get salary components from employee doctype
+    salary_components = frappe.get_all(
+        "Salary Details",
+        filters={"parent": employee_id},
+        fields=["salary_component", "amount", "parentfield"]
+    )
+    
+    salary_components_earnings = {}
+    salary_components_deductions = {}
+    
+    for component in salary_components:
+        if component.parentfield == "custom_earnings":
+            salary_components_earnings[component.salary_component] = component.amount
+        elif component.parentfield == "custom_deductions":
+            salary_components_deductions[component.salary_component] = component.amount
+    
+    # Calculate total monthly salary
+    total_earnings = sum(salary_components_earnings.values())
+    total_deductions = sum(salary_components_deductions.values())
+    total_monthly_salary = total_earnings - total_deductions
+    
+    # Convert dates to datetime objects
+    start_dt = datetime.strptime(start_date_str, '%Y-%m-%d')
+    end_dt = datetime.strptime(end_date_str, '%Y-%m-%d')
+    total_days_in_period = (end_dt - start_dt).days + 1
+    
+    # Get total days in the month for per-day calculation
+    total_days_in_month = calendar.monthrange(year, month_num)[1]
+    
+    # Get attendance records for the period
+    attendance_records = frappe.get_all(
+        "Attendance",
+        filters={
+            "employee": employee_id,
+            "attendance_date": ["between", [start_date_str, end_date_str]]
+        },
+        fields=["attendance_date", "status"]
+    )
+    
+    # Count worked days (Present status)
+    worked_days = len([record for record in attendance_records if record.status == "Present"])
+    
+    # Count weekends (Saturday and Sunday) in the period
+    weekend_days = 0
+    current_date = start_dt
+    while current_date <= end_dt:
+        if current_date.weekday() in [5, 6]:  # Saturday = 5, Sunday = 6
+            weekend_days += 1
+        current_date += timedelta(days=1)
+    
+    # Calculate payable days (worked days + weekends)
+    payable_days = worked_days + weekend_days
+    
+    # Calculate per day salary based on monthly total
+    per_day_salary = total_monthly_salary / total_days_in_month
+    
+    # Calculate component-wise breakdown for earnings
+    calculated_earnings = {}
+    for component, amount in salary_components_earnings.items():
+        per_day_component = amount / total_days_in_month
+        calculated_earnings[component] = per_day_component * payable_days
+    
+    # Calculate component-wise breakdown for deductions
+    calculated_deductions = {}
+    for component, amount in salary_components_deductions.items():
+        per_day_component = amount / total_days_in_month
+        calculated_deductions[component] = per_day_component * payable_days
+    
+    total_payable_earnings = sum(calculated_earnings.values())
+    total_payable_deductions = sum(calculated_deductions.values())
+    total_payable_salary = total_payable_earnings - total_payable_deductions
+    
+    # Create Salary Slip document
+    salary_slip = frappe.new_doc("Salary Slip")
+    
+    # Set basic fields
+    salary_slip.employee = employee_id
+    salary_slip.employee_name = employee.employee_name
+    salary_slip.department = employee.department
+    salary_slip.designation = employee.designation
+    salary_slip.company = employee.company
+    salary_slip.start_date = start_date_str
+    salary_slip.end_date = end_date_str
+    salary_slip.posting_date = frappe.utils.today()
+    salary_slip.total_working_days = total_days_in_period
+    salary_slip.payment_days = payable_days
+    salary_slip.leave_without_pay = total_days_in_period - payable_days
+    
+    # Add earnings (salary components)
+    for component_name, calculated_amount in calculated_earnings.items():
+        if calculated_amount > 0:
+            salary_slip.append("earnings", {
+                "salary_component": component_name,
+                "amount": calculated_amount
+            })
+    
+    # Add deductions
+    for component_name, calculated_amount in calculated_deductions.items():
+        if calculated_amount > 0:
+            salary_slip.append("deductions", {
+                "salary_component": component_name,
+                "amount": calculated_amount
+            })
+    
+    # Set totals
+    salary_slip.gross_pay = total_payable_earnings
+    salary_slip.total_deduction = total_payable_deductions
+    salary_slip.net_pay = total_payable_salary
+    
+    # Add custom fields for tracking (make sure these fields exist in Salary Slip)
+    if hasattr(salary_slip, 'custom_worked_days'):
+        salary_slip.custom_worked_days = worked_days
+    if hasattr(salary_slip, 'custom_weekend_days'):
+        salary_slip.custom_weekend_days = weekend_days
+    if hasattr(salary_slip, 'custom_per_day_salary'):
+        salary_slip.custom_per_day_salary = per_day_salary
+    
+    # Save and submit the salary slip
+    salary_slip.insert()
+    salary_slip.submit()
+    
+    return {
+        'salary_slip_id': salary_slip.name,
+        'employee_id': employee_id,
+        'employee_name': employee.employee_name,
+        'month': month_name.title(),
+        'year': year,
+        'employee_joining_date': str(employee_start_date) if employee_start_date else None,
+        'month_start_date': str(month_start_date),
+        'actual_start_date': start_date_str,
+        'end_date': end_date_str,
+        'total_days_in_period': total_days_in_period,
+        'total_days_in_month': total_days_in_month,
+        'worked_days': worked_days,
+        'weekend_days': weekend_days,
+        'payable_days': payable_days,
+        'gross_pay': total_payable_earnings,
+        'total_deductions': total_payable_deductions,
+        'net_pay': total_payable_salary,
+        'per_day_salary': per_day_salary,
+        'earnings_components': calculated_earnings,
+        'deduction_components': calculated_deductions,
+        'message': f'Salary Slip {salary_slip.name} created successfully'
+    }
+
+# Rest of your functions remain the same...
