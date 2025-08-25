@@ -6,7 +6,7 @@ from datetime import date
 from frappe import _
 import json
 import requests
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 @frappe.whitelist()
 def get_user_details():
@@ -188,3 +188,344 @@ def get_sal_structure(sal_structure):
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "get_sal_structure API")
         return {"status": "error", "message": str(e)}
+
+
+import frappe
+from frappe.utils import now_datetime
+
+@frappe.whitelist()
+def punch_in():
+    """Create a new Employee Checkin record for IN punch"""
+    employee = frappe.session.user 
+    employee = frappe.db.get_value("Employee", {"user_id": employee}, "name") # or get from linked Employee doctype
+    doc = frappe.get_doc({
+        "doctype": "Employee Checkin",
+        "employee": employee,
+        "time": now_datetime(),
+        "log_type": "IN"
+    })
+    doc.insert(ignore_permissions=True)
+    frappe.db.commit()
+    return {
+        "status": "success",
+        "start_time": doc.time
+    }
+
+
+@frappe.whitelist()
+def punch_out():
+    """Create a new Employee Checkin record for OUT punch"""
+    employee = frappe.session.user
+    employee = frappe.db.get_value("Employee", {"user_id": employee}, "name")
+    doc = frappe.get_doc({
+        "doctype": "Employee Checkin",
+        "employee": employee,
+        "time": now_datetime(),
+        "log_type": "OUT"
+    })
+    doc.insert(ignore_permissions=True)
+    frappe.db.commit()
+    return {"status": "success"}
+
+@frappe.whitelist()
+def get_punch_status():
+    employee = frappe.session.user
+    
+    
+
+    # Fetch shift timings for today
+    shift = frappe.db.sql("""
+        SELECT s.start_time, s.end_time
+        FROM `tabEmployee` sa
+        JOIN `tabShift Type` s ON sa.default_shift = s.name
+        WHERE sa.user_id = %s
+        LIMIT 1
+    """, (employee,), as_dict=True)
+
+    if shift:
+        # Convert timedelta to time
+        start_time = (datetime.min + shift[0].start_time).time() if isinstance(shift[0].start_time, timedelta) else shift[0].start_time
+        end_time = (datetime.min + shift[0].end_time).time() if isinstance(shift[0].end_time, timedelta) else shift[0].end_time
+    else:
+        start_time = end_time = None
+
+
+    employee = frappe.db.get_value("Employee", {"user_id": employee}, "name")
+    last_punch = frappe.db.sql("""
+        SELECT log_type, time
+        FROM `tabEmployee Checkin`
+        WHERE employee = %s
+        ORDER BY time DESC
+        LIMIT 1
+    """, (employee,), as_dict=True)
+
+    now_time = now_datetime()
+
+    def is_within_shift():
+        """Check if the current time is within the shift timings, including overnight shifts."""
+        if not start_time or not end_time:
+            return False
+
+        now_t = now_time.time()
+
+        if start_time <= end_time:
+            # Normal same-day shift
+            return start_time <= now_t <= end_time
+        else:
+            # Overnight shift: passes midnight
+            return now_t >= start_time or now_t <= end_time
+
+
+    within_shift = is_within_shift()
+
+    if last_punch and last_punch[0].log_type == "IN":
+        return {
+            "status": "in",
+            "start_time": last_punch[0].time,
+            "within_shift": within_shift,
+            "shift_start": start_time,
+            "shift_end": end_time
+        }
+    return {
+        "status": "out",
+        "within_shift": within_shift,
+        "shift_start": start_time,
+        "shift_end": end_time
+    }
+
+
+
+
+@frappe.whitelist()
+def replace_salary_structure(salary_structure, employee):
+    employee_doc = frappe.get_doc("Employee", employee)
+
+    # 🔎 Look for "Basic" in Employee's custom earnings child table
+    ctc = employee_doc.ctc or 0
+
+    # 📝 Create Salary Structure Assignment
+    assignment = frappe.get_doc({
+        "doctype": "Salary Structure Assignment",
+        "employee": employee,
+        "salary_structure": salary_structure,
+        "from_date": frappe.utils.nowdate(),
+        "base": ((ctc/12)/2) or 0,
+    })
+    assignment.insert(ignore_permissions=True)
+    frappe.db.commit()
+    return assignment.name
+
+
+@frappe.whitelist()
+def employee_get_all_salay_amount(ctc, employee):
+    # Basic\
+    ctc = float(ctc)
+    fixed = ctc
+
+    basic = (ctc / 2)/12
+
+    basic = round(basic, 2)
+    
+    # HRA
+    hra = (basic / 2)
+
+    hra = round(hra, 2)
+    
+    # Mobile Allowance
+    if 300000 < ctc <= 1200000:
+        mobile_allowance = 12000
+    elif ctc <= 300000:
+        mobile_allowance = 6000
+    else:
+        mobile_allowance = 30000
+
+    mobile_allowance = (mobile_allowance / 12)
+    
+    mobile_allowance = round(mobile_allowance, 2)
+
+
+    check_basic = basic*12
+    if check_basic < 180000:
+        pf_employer = (check_basic * (12/100))/12
+    else:
+        pf_employer = (21600/12)
+        
+
+
+    pf_employer = round(pf_employer, 2)
+
+    gratuity = basic*(4.81/100)
+
+    gratuity = round(gratuity, 2)
+
+    pf_employee = pf_employer
+
+    children_allowance = 500
+
+
+
+
+
+
+    employee_doc = frappe.get_doc("Employee", employee)
+
+    age = employee_doc.custom_age
+    if age is None:
+        frappe.throw(_("Please set the age of the employee."))
+
+    # get all ages from Age doctype and convert to integers
+    age_list = frappe.get_all("Health Insurance", fields=["name"])
+    ages = sorted([int(a["name"]) for a in age_list])
+
+    # find the largest age that is <= employee's age
+    lower_age = max([a for a in ages if a <= int(age)], default=None)
+
+    next_age = min([a for a in ages if a > lower_age], default=None) if lower_age is not None else None
+
+    medical_insurance = frappe.get_value("Health Insurance", {"name": next_age}, "employer")
+
+    medical_insurance = medical_insurance or 0
+
+    medical_insurance = round((medical_insurance / 12), 2)
+
+
+
+    if 1200000 < ctc <= 2400000:
+        lta = 62400
+    elif 2400000 < ctc <= 3600000:
+        lta = 120000
+    elif ctc > 3600000:
+        lta = 360000
+    else:
+        lta = 0
+    lta = round((lta / 12),2)
+
+
+    if ctc> 360000:
+        conveyance_allowance = 19200
+    else:
+        conveyance_allowance = 0
+    conveyance_allowance = round((conveyance_allowance / 12),2)
+
+    if ctc > 1200000:
+        fuel_and_maintenance = 21600
+    else:
+        fuel_and_maintenance = 0
+    fuel_and_maintenance = round((fuel_and_maintenance / 12),2)
+
+
+    if ctc > 1200000:
+        driver_reimbursement = 10800
+    else:
+        driver_reimbursement = 0
+    driver_reimbursement = round((driver_reimbursement / 12),2)
+
+    if ctc > 2400000:
+        books_and_periodicals = 24000
+    else:
+        books_and_periodicals = 0
+    books_and_periodicals  = round((books_and_periodicals / 12),2)
+
+
+    total_earnings = fixed -(pf_employer+gratuity+medical_insurance)
+
+    if total_earnings > 252000:
+        esi_employer = 0
+    else:
+        esi_employer = total_earnings * (3.25 / 100)
+    
+    esi_employer = round(esi_employer, 2)
+
+    if total_earnings > 252000:
+        esi_employee = 0
+    else:
+        esi_employee = total_earnings * (0.75 / 100)
+    
+    esi_employee = round(esi_employee, 2)
+
+
+    
+    special_allowance = max((ctc/12) - (basic + hra + children_allowance + mobile_allowance+conveyance_allowance+ fuel_and_maintenance + driver_reimbursement + books_and_periodicals + lta+
+                               medical_insurance + pf_employer + gratuity +esi_employer), 0)
+    
+    
+    special_allowance = round(special_allowance, 2)
+
+    if hasattr(employee_doc, "custom_earnings"):
+        for row in employee_doc.custom_earnings:
+            row.additional_salary = ""
+            if row.salary_component == "Basic Component":
+                row.amount = basic
+            elif row.salary_component == "HRA Component":
+                row.amount = hra
+            elif row.salary_component == "Mobile Allowance":
+                row.amount = mobile_allowance
+            elif row.salary_component == "Children Education Allowance":
+                row.amount = children_allowance
+            elif row.salary_component == "Special Allowance":
+                row.amount = special_allowance
+            elif row.salary_component == "LTA":
+                row.amount = lta
+            elif row.salary_component == "Conveyance Allowance":
+                row.amount = conveyance_allowance
+            elif row.salary_component == "Fuel & Maintenance":
+                row.amount = fuel_and_maintenance
+            elif row.salary_component == "Driver Reimbursment":
+                row.amount = driver_reimbursement
+            elif row.salary_component == "Books & Periodicals":
+                row.amount = books_and_periodicals
+
+
+
+    if hasattr(employee_doc, "custom_deductions"):
+        for row in employee_doc.custom_deductions:
+            row.additional_salary = ""
+            if row.salary_component == "PF Payer Component":
+                row.amount = pf_employer
+            elif row.salary_component == "PF Payee Component":
+                row.amount = pf_employee
+            elif row.salary_component == "Gratuity":
+                row.amount = gratuity
+            elif row.salary_component == "Medical Insurance Component":
+                row.amount = medical_insurance
+            elif row.salary_component == "ESI Payer":
+                row.amount = esi_employer
+            elif row.salary_component == "ESI Payee":
+                row.amount = esi_employee
+
+
+    employee_doc.save(ignore_permissions=True)
+    frappe.db.commit()
+
+
+
+@frappe.whitelist()
+def get_employee_attendance():
+    user_id = frappe.session.user
+    employee_id = frappe.db.get_value("Employee", {"user_id": user_id}, "name")
+    
+    if not employee_id:
+        employee_id = "DRD-1169"  # Default to Karthik
+    
+    try:
+        records = frappe.get_all(
+            "Attendance",
+            filters={"employee": employee_id},
+            fields=["employee", "employee_name", "attendance_date", "status"],
+            order_by="attendance_date asc"
+        )
+        
+        # Convert to a dictionary for easier lookup
+        attendance_dict = {}
+        for record in records:
+            date_key = record.attendance_date.strftime("%Y-%m-%d")
+            attendance_dict[date_key] = record.status
+        
+        # Just show a simple summary
+        frappe.msgprint(f"Loaded attendance for {len(records)} dates")
+        
+        return attendance_dict
+        
+    except Exception as e:
+        frappe.msgprint(f"Error: {str(e)}")
+        return {}

@@ -577,6 +577,10 @@ def get_rockstar():
 
 
 
+
+
+
+
 # @frappe.whitelist()
 # def logout_employee():
 #     employee_list= frappe.get_all("Employee",{"status":"active"},["name"])
