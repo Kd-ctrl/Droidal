@@ -558,7 +558,7 @@ def get_professional_tax(name):
                 return {"status": "exists", "message": "Professional Tax already exists in Salary Slip."}
 
 
-            
+
             salary_detail = frappe.new_doc("Salary Detail")
             salary_detail.salary_component = "Professional Tax"
             salary_detail.amount = professional_tax[0].tax_amount
@@ -571,3 +571,75 @@ def get_professional_tax(name):
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "get_professional_tax API")
         return {"status": "error", "message": str(e)}
+    
+
+
+@frappe.whitelist()
+
+
+def mark_attendance_based_on_hours(from_date=None):
+    # If no date is given, default to today
+    if not from_date:
+        from_date = date.today()-timedelta(days=1)
+
+    get_employee = frappe.get_all(
+        "Employee",
+        filters={"status": "Active"},
+        fields=["name"]
+    )
+
+    for emp in get_employee:
+        employee = emp.name
+
+        # Get all check-ins after given date
+        checkins = frappe.get_all(
+            "Employee Checkin",
+            filters={
+                "employee": employee,
+                "time": [">=", from_date]  # Only logs after this date
+            },
+            fields=["time", "log_type"],
+            order_by="time asc"
+        )
+
+        if not checkins:
+            continue
+
+        i = 0
+        while i < len(checkins):
+            if checkins[i].log_type == "IN":
+                check_in_time = checkins[i].time
+                check_in_date = check_in_time.date()
+                if check_in_date == date.today():
+                    i += 1
+                    continue
+
+                # Find next OUT after this IN
+                next_out = None
+                for j in range(i + 1, len(checkins)):
+                    if checkins[j].log_type == "OUT":
+                        next_out = checkins[j].time
+                        i = j  # Move pointer to OUT index for next iteration
+                        break
+
+                if next_out:
+                    worked_hours = (next_out - check_in_time).total_seconds() / 3600
+
+                    if worked_hours >= 8:
+                        existing = frappe.get_all(
+                            "Attendance",
+                            filters={"employee": employee, "attendance_date": check_in_date},
+                            limit_page_length=1
+                        )
+
+                        if not existing:
+                            att_doc = frappe.get_doc({
+                                "doctype": "Attendance",
+                                "employee": employee,
+                                "attendance_date": check_in_date,
+                                "status": "Present"
+                            })
+                            att_doc.insert(ignore_permissions=True)
+                            frappe.db.commit()
+
+            i += 1
