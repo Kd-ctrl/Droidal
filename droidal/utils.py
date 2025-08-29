@@ -529,3 +529,45 @@ def get_employee_attendance():
     except Exception as e:
         frappe.msgprint(f"Error: {str(e)}")
         return {}
+    
+
+
+@frappe.whitelist()
+def get_professional_tax(name):
+    salary_slip_doc = frappe.get_doc("Salary Slip", name)
+    gross_salary = salary_slip_doc.gross_pay
+    try:
+        professional_tax = frappe.get_all(
+            "Professional Tax",
+            filters={"basic_range_from":["<=", gross_salary],
+                    "basic_range_to":[">=", gross_salary],
+                    "from_date":["<=", salary_slip_doc.start_date],
+                    },
+            fields=["tax_amount"],
+            order_by="from_date desc",
+            limit_page_length=1
+        )
+
+        if professional_tax:
+            salary_detail_exists = frappe.db.exists({
+                "doctype": "Salary Detail",
+                "parent": name,
+                "salary_component": "Professional Tax"
+            })
+            if salary_detail_exists:
+                return {"status": "exists", "message": "Professional Tax already exists in Salary Slip."}
+
+
+            
+            salary_detail = frappe.new_doc("Salary Detail")
+            salary_detail.salary_component = "Professional Tax"
+            salary_detail.amount = professional_tax[0].tax_amount
+            salary_detail.parent = name
+            salary_detail.parentfield = "deductions"
+            salary_detail.parenttype = "Salary Slip"
+            salary_detail.save(ignore_permissions=True)
+            frappe.db.commit()        
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "get_professional_tax API")
+        return {"status": "error", "message": str(e)}
