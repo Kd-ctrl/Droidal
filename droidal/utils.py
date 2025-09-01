@@ -96,16 +96,22 @@ def test():
 @frappe.whitelist()
 def check_login(username, password):
     try:
-        # Try to authenticate the user
+        # Get actual user ID
+        user_id = frappe.get_value("User", username, "name") or username
+
+        # Check password directly
+        from frappe.utils.password import check_password
+        check_password(user_id, password)
+
+        # Perform login
         login_manager = LoginManager()
-        login_manager.authenticate(username, password)
+        login_manager.authenticate(user_id, password)
         login_manager.post_login()
 
-        # If successful, return a success response
         return {
             "status": "success",
             "message": _("Login successful"),
-            "user": username
+            "user": user_id
         }
 
     except frappe.AuthenticationError:
@@ -113,6 +119,7 @@ def check_login(username, password):
             "status": "fail",
             "message": _("Invalid username or password")
         }
+
 
 
 
@@ -451,51 +458,54 @@ def employee_get_all_salay_amount(ctc, employee):
     
     special_allowance = round(special_allowance, 2)
 
+
+        # Define mappings for earnings and deductions
+    earning_map = {
+        "Basic Component": basic,
+        "HRA Component": hra,
+        "Mobile Allowance": mobile_allowance,
+        "Children Education Allowance": children_allowance,
+        "Special Allowance": special_allowance,
+        "LTA": lta,
+        "Conveyance Allowance": conveyance_allowance,
+        "Fuel & Maintenance": fuel_and_maintenance,
+        "Driver Reimbursment": driver_reimbursement,
+        "Books & Periodicals": books_and_periodicals
+    }
+
+    deduction_map = {
+        "PF Payer Component": pf_employer,
+        "PF Payee Component": pf_employee,
+        "Gratuity": gratuity,
+        "Medical Insurance Component": medical_insurance,
+        "ESI Payer": esi_employer,
+        "ESI Payee": esi_employee
+    }
+
+    # Clear and re-add earnings rows
     if hasattr(employee_doc, "custom_earnings"):
-        for row in employee_doc.custom_earnings:
-            row.additional_salary = ""
-            if row.salary_component == "Basic Component":
-                row.amount = basic
-            elif row.salary_component == "HRA Component":
-                row.amount = hra
-            elif row.salary_component == "Mobile Allowance":
-                row.amount = mobile_allowance
-            elif row.salary_component == "Children Education Allowance":
-                row.amount = children_allowance
-            elif row.salary_component == "Special Allowance":
-                row.amount = special_allowance
-            elif row.salary_component == "LTA":
-                row.amount = lta
-            elif row.salary_component == "Conveyance Allowance":
-                row.amount = conveyance_allowance
-            elif row.salary_component == "Fuel & Maintenance":
-                row.amount = fuel_and_maintenance
-            elif row.salary_component == "Driver Reimbursment":
-                row.amount = driver_reimbursement
-            elif row.salary_component == "Books & Periodicals":
-                row.amount = books_and_periodicals
+        employee_doc.custom_earnings = []  # Clear existing rows
+        for component, amount in earning_map.items():
+            employee_doc.append("custom_earnings", {
+                "salary_component": component,
+                "amount": amount,
+                "additional_salary": ""
+            })
 
-
-
+    # Clear and re-add deduction rows
     if hasattr(employee_doc, "custom_deductions"):
-        for row in employee_doc.custom_deductions:
-            row.additional_salary = ""
-            if row.salary_component == "PF Payer Component":
-                row.amount = pf_employer
-            elif row.salary_component == "PF Payee Component":
-                row.amount = pf_employee
-            elif row.salary_component == "Gratuity":
-                row.amount = gratuity
-            elif row.salary_component == "Medical Insurance Component":
-                row.amount = medical_insurance
-            elif row.salary_component == "ESI Payer":
-                row.amount = esi_employer
-            elif row.salary_component == "ESI Payee":
-                row.amount = esi_employee
+        employee_doc.custom_deductions = []  # Clear existing rows
+        for component, amount in deduction_map.items():
+            employee_doc.append("custom_deductions", {
+                "salary_component": component,
+                "amount": amount,
+                "additional_salary": ""
+            })
 
 
     employee_doc.save(ignore_permissions=True)
     frappe.db.commit()
+    employee_doc.reload()
 
 
 
