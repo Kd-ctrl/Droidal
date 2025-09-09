@@ -196,48 +196,13 @@ def get_sal_structure(sal_structure):
         return {"status": "error", "message": str(e)}
 
 
+from datetime import datetime, timedelta
 import frappe
 from frappe.utils import now_datetime
 
 @frappe.whitelist()
-def punch_in():
-    """Create a new Employee Checkin record for IN punch"""
-    employee = frappe.session.user 
-    employee = frappe.db.get_value("Employee", {"user_id": employee}, "name") # or get from linked Employee doctype
-    doc = frappe.get_doc({
-        "doctype": "Employee Checkin",
-        "employee": employee,
-        "time": now_datetime(),
-        "log_type": "IN"
-    })
-    doc.insert(ignore_permissions=True)
-    frappe.db.commit()
-    return {
-        "status": "success",
-        "start_time": doc.time
-    }
-
-
-@frappe.whitelist()
-def punch_out():
-    """Create a new Employee Checkin record for OUT punch"""
-    employee = frappe.session.user
-    employee = frappe.db.get_value("Employee", {"user_id": employee}, "name")
-    doc = frappe.get_doc({
-        "doctype": "Employee Checkin",
-        "employee": employee,
-        "time": now_datetime(),
-        "log_type": "OUT"
-    })
-    doc.insert(ignore_permissions=True)
-    frappe.db.commit()
-    return {"status": "success"}
-
-@frappe.whitelist()
 def get_punch_status():
     employee = frappe.session.user
-    
-    
 
     # Fetch shift timings for today
     shift = frappe.db.sql("""
@@ -249,12 +214,10 @@ def get_punch_status():
     """, (employee,), as_dict=True)
 
     if shift:
-        # Convert timedelta to time
         start_time = (datetime.min + shift[0].start_time).time() if isinstance(shift[0].start_time, timedelta) else shift[0].start_time
         end_time = (datetime.min + shift[0].end_time).time() if isinstance(shift[0].end_time, timedelta) else shift[0].end_time
     else:
         start_time = end_time = None
-
 
     employee = frappe.db.get_value("Employee", {"user_id": employee}, "name")
     last_punch = frappe.db.sql("""
@@ -281,7 +244,6 @@ def get_punch_status():
             # Overnight shift: passes midnight
             return now_t >= start_time or now_t <= end_time
 
-
     within_shift = is_within_shift()
 
     if last_punch and last_punch[0].log_type == "IN":
@@ -290,15 +252,57 @@ def get_punch_status():
             "start_time": last_punch[0].time,
             "within_shift": within_shift,
             "shift_start": start_time,
-            "shift_end": end_time
+            "shift_end": end_time,
+            "server_now": now_time   # ⬅️ Important
         }
     return {
         "status": "out",
         "within_shift": within_shift,
         "shift_start": start_time,
-        "shift_end": end_time
+        "shift_end": end_time,
+        "server_now": now_time       # ⬅️ Important
     }
 
+
+@frappe.whitelist()
+def punch_in():
+    """Create a new Employee Checkin record for IN punch"""
+    employee = frappe.session.user
+    employee = frappe.db.get_value("Employee", {"user_id": employee}, "name")
+    now_time = now_datetime()
+    doc = frappe.get_doc({
+        "doctype": "Employee Checkin",
+        "employee": employee,
+        "time": now_time,
+        "log_type": "IN"
+    })
+    doc.insert(ignore_permissions=True)
+    frappe.db.commit()
+    return {
+        "status": "success",
+        "start_time": doc.time,
+        "server_now": now_time    # ⬅️ Important
+    }
+
+
+@frappe.whitelist()
+def punch_out():
+    """Create a new Employee Checkin record for OUT punch"""
+    employee = frappe.session.user
+    employee = frappe.db.get_value("Employee", {"user_id": employee}, "name")
+    now_time = now_datetime()
+    doc = frappe.get_doc({
+        "doctype": "Employee Checkin",
+        "employee": employee,
+        "time": now_time,
+        "log_type": "OUT"
+    })
+    doc.insert(ignore_permissions=True)
+    frappe.db.commit()
+    return {
+        "status": "success",
+        "server_now": now_time     # ⬅️ Important
+    }
 
 
 
