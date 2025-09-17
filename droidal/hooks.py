@@ -126,8 +126,16 @@ app_include_js = "/assets/droidal/js/workspace_hide.js"
 
 doc_events = {
   "Salary Slip":{
-    "after_insert": "droidal.salary_slip.auto_assign_employee"
-  }
+    "after_insert": "droidal.salary_slip.auto_assign_employee",
+    "after_insert": "droidal.utils.get_professional_tax",
+  },
+  "Employee": {
+        "on_update": [
+            "droidal.utils.replace_salary_structure",
+            "droidal.utils.webhook_for_employee",
+            "droidal.utils.employee_get_all_salay_amount",
+        ]
+    }
 }
 
 # Scheduled Tasks
@@ -149,6 +157,11 @@ scheduler_events = {
 # 	"monthly": [
 # 		"droidal.tasks.monthly"
 # 	],
+    "cron": {
+        "0 7 * * *": [
+            "droidal.utils.mark_attendance_based_on_hours"  # every day at 7 AM
+        ],
+    }
 }
 
 # Testing

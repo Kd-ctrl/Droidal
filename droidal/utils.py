@@ -35,54 +35,46 @@ def get_user_details():
     
 
 
+# droidal/utils.py
+import frappe
+from frappe import _
+from datetime import datetime, date
+import requests
+from requests.auth import HTTPBasicAuth
+import json
 @frappe.whitelist()
-def webhook_for_employee(name):
-
-    document = frappe.get_doc("Employee",name)
-    def convert_dates(obj):
-        """Recursively convert datetime/date to ISO string format."""
-        if isinstance(obj, (datetime, date)):
-            return obj.isoformat()
-        elif isinstance(obj, dict):
-            return {k: convert_dates(v) for k, v in obj.items()}
-        elif isinstance(obj, list):
-            return [convert_dates(item) for item in obj]
-        else:
+def webhook_for_employee(doc, method=None):
+    if getattr(frappe.flags, "in_webhook_for_employee", False):
+        return
+    frappe.flags.in_webhook_for_employee = True
+    try:
+        def convert_dates(obj):
+            if isinstance(obj, (datetime, date)):
+                return obj.isoformat()
+            if isinstance(obj, dict):
+                return {k: convert_dates(v) for k, v in obj.items()}
+            if isinstance(obj, list):
+                return [convert_dates(i) for i in obj]
             return obj
 
+        document_dict = convert_dates(doc.as_dict())
+        url = "http://cxo.droidal.com/api/nila_users_webhook/"
+        payload = {"document": document_dict}
+        headers = {"Content-Type": "application/json"}
 
-    document_dict = convert_dates(document.as_dict())
-    
-    
-    
-    dict_doc = document.as_dict()
-    import requests
-    from requests.auth import HTTPBasicAuth
-        
-    url = "http://cxo.droidal.com/api/nila_users_webhook/"
-    
-    payload = {
-    "document":document_dict
-    }
-    
-    headers = {
-        "Content-Type": "application/json"
-    }
-        
-    username = 'lar3fb7pi4z6dhk'
-    password = 'uhest1p6zf8qgdi'
-        
-    import json
-        
-    response = requests.post(
-        url,
-        data=json.dumps(payload), 
-        headers=headers,
-        auth=HTTPBasicAuth(username, password)
-    )
-     
-     
-    
+        try:
+            resp = requests.post(
+                url,
+                data=json.dumps(payload),
+                headers=headers,
+                auth=HTTPBasicAuth("lar3fb7pi4z6dhk", "uhest1p6zf8qgdi"),
+                timeout=10,
+            )
+            resp.raise_for_status()
+        except requests.RequestException as e:
+            frappe.log_error(f"Webhook call failed for {doc.name}: {e}", "webhook_for_employee")
+    finally:
+        frappe.flags.in_webhook_for_employee = False
     
 @frappe.whitelist()
 def test():
@@ -304,212 +296,173 @@ def punch_out():
         "server_now": now_time     # ⬅️ Important
     }
 
+@frappe.whitelist()
+def replace_salary_structure(doc, method=None):
+    # --- guard to prevent infinite loop ---
+    if getattr(frappe.flags, "in_replace_salary_structure", False):
+        return
+    frappe.flags.in_replace_salary_structure = True
+
+    try:
+        ctc = doc.ctc or 0
+        today = frappe.utils.nowdate()
+
+        existing = frappe.get_all(
+            "Salary Structure Assignment",
+            filters={
+                "employee": doc.name,
+                "salary_structure": doc.custom_salary_structure,
+                "from_date": today,
+            },
+            pluck="name",
+        )
+
+        if existing:
+            assignment = frappe.get_doc("Salary Structure Assignment", existing[0])
+            assignment.base = (ctc / 12) / 2
+            assignment.save(ignore_permissions=True)
+        else:
+            assignment = frappe.get_doc({
+                "doctype": "Salary Structure Assignment",
+                "employee": doc.name,
+                "salary_structure": doc.custom_salary_structure,
+                "from_date": today,
+                "base": (ctc / 12) / 2 if ctc else 0,
+            })
+            assignment.insert(ignore_permissions=True)
+
+        frappe.db.commit()
+        return assignment.name
+    finally:
+        frappe.flags.in_replace_salary_structure = False
 
 
 @frappe.whitelist()
-def replace_salary_structure(salary_structure, employee):
-    employee_doc = frappe.get_doc("Employee", employee)
+def employee_get_all_salay_amount(doc, method=None):
+    # --- guard to prevent infinite loop ---
+    if getattr(frappe.flags, "in_salary_amount_calc", False):
+        return
+    frappe.flags.in_salary_amount_calc = True
 
-    # 🔎 Look for "Basic" in Employee's custom earnings child table
-    ctc = employee_doc.ctc or 0
+    try:
+        ctc = float(doc.ctc or 0)
+        employee = doc.name
 
-    # 📝 Create Salary Structure Assignment
-    assignment = frappe.get_doc({
-        "doctype": "Salary Structure Assignment",
-        "employee": employee,
-        "salary_structure": salary_structure,
-        "from_date": frappe.utils.nowdate(),
-        "base": ((ctc/12)/2) or 0,
-    })
-    assignment.insert(ignore_permissions=True)
-    frappe.db.commit()
-    return assignment.name
+        # === Basic and HRA ===
+        basic = round((ctc / 2) / 12, 2)
+        hra = round(basic / 2, 2)
 
+        # === Mobile Allowance ===
+        if 300000 < ctc <= 1200000:
+            mobile_allowance = 12000
+        elif ctc <= 300000:
+            mobile_allowance = 6000
+        else:
+            mobile_allowance = 30000
+        mobile_allowance = round(mobile_allowance / 12, 2)
 
-@frappe.whitelist()
-def employee_get_all_salay_amount(ctc, employee):
-    # Basic\
-    ctc = float(ctc)
-    fixed = ctc
+        # === PF & Gratuity ===
+        check_basic = basic * 12
+        pf_employer = round((check_basic * 0.12) / 12, 2) if check_basic < 180000 else round(21600 / 12, 2)
+        gratuity = round(basic * 0.0481, 2)
+        pf_employee = pf_employer
+        children_allowance = 500
 
-    basic = (ctc / 2)/12
+        # === Medical Insurance ===
+        age = doc.custom_age
+        if age is None:
+            frappe.throw(_("Please set the age of the employee."))
 
-    basic = round(basic, 2)
-    
-    # HRA
-    hra = (basic / 2)
+        age_list = frappe.get_all("Health Insurance", fields=["name"])
+        ages = sorted([int(a["name"]) for a in age_list]) if age_list else []
+        lower_age = max([a for a in ages if a <= int(age)], default=None)
+        next_age = min([a for a in ages if a > lower_age], default=None) if lower_age is not None else None
+        medical_insurance = frappe.get_value("Health Insurance", {"name": next_age}, "employer") or 0
+        medical_insurance = round(medical_insurance / 12, 2)
 
-    hra = round(hra, 2)
-    
-    # Mobile Allowance
-    if 300000 < ctc <= 1200000:
-        mobile_allowance = 12000
-    elif ctc <= 300000:
-        mobile_allowance = 6000
-    else:
-        mobile_allowance = 30000
+        # === Other allowances ===
+        lta = round(
+            62400 / 12 if 1200000 < ctc <= 2400000
+            else 120000 / 12 if 2400000 < ctc <= 3600000
+            else 360000 / 12 if ctc > 3600000
+            else 0, 2,
+        )
+        conveyance_allowance = round((19200 / 12) if ctc > 360000 else 0, 2)
+        fuel_and_maintenance = round((21600 / 12) if ctc > 1200000 else 0, 2)
+        driver_reimbursement = round((10800 / 12) if ctc > 1200000 else 0, 2)
+        books_and_periodicals = round((24000 / 12) if ctc > 2400000 else 0, 2)
 
-    mobile_allowance = (mobile_allowance / 12)
-    
-    mobile_allowance = round(mobile_allowance, 2)
+        # === ESI ===
+        total_earnings = ctc - (pf_employer + gratuity + medical_insurance)
+        if total_earnings > 252000:
+            esi_employer = 0
+            esi_employee = 0
+        else:
+            esi_employer = round(total_earnings * 0.0325, 2)
+            esi_employee = round(total_earnings * 0.0075, 2)
 
+        # === Special Allowance ===
+        special_allowance = max(
+            (ctc / 12)
+            - (
+                basic + hra + children_allowance + mobile_allowance
+                + conveyance_allowance + fuel_and_maintenance
+                + driver_reimbursement + books_and_periodicals
+                + lta + medical_insurance + pf_employer + gratuity + esi_employer
+            ),
+            0,
+        )
+        special_allowance = round(special_allowance, 2)
 
-    check_basic = basic*12
-    if check_basic < 180000:
-        pf_employer = (check_basic * (12/100))/12
-    else:
-        pf_employer = (21600/12)
-        
+        # === Update child tables ===
+        earning_map = {
+            "Basic Component": basic,
+            "HRA Component": hra,
+            "Mobile Allowance": mobile_allowance,
+            "Children Education Allowance": children_allowance,
+            "Special Allowance": special_allowance,
+            "LTA": lta,
+            "Conveyance Allowance": conveyance_allowance,
+            "Fuel & Maintenance": fuel_and_maintenance,
+            "Driver Reimbursement": driver_reimbursement,
+            "Books & Periodicals": books_and_periodicals,
+        }
+        deduction_map = {
+            "PF Payer Component": pf_employer,
+            "PF Payee Component": pf_employee,
+            "Gratuity": gratuity,
+            "Medical Insurance Component": medical_insurance,
+            "ESI Payer": esi_employer,
+            "ESI Payee": esi_employee,
+        }
 
+        # === Clear existing rows in DB and insert new rows ===
+        frappe.db.delete("Salary Detail", {"parent": employee})
 
-    pf_employer = round(pf_employer, 2)
+        for comp, amt in earning_map.items():
+            frappe.get_doc({
+                "doctype": "Salary Detail",
+                "parent": employee,
+                "parentfield": "custom_earnings",
+                "parenttype": "Employee",
+                "salary_component": comp,
+                "amount": amt
+            }).insert(ignore_permissions=True)
 
-    gratuity = basic*(4.81/100)
+        for comp, amt in deduction_map.items():
+            frappe.get_doc({
+                "doctype": "Salary Detail",
+                "parent": employee,
+                "parentfield": "custom_deductions",
+                "parenttype": "Employee",
+                "salary_component": comp,
+                "amount": amt
+            }).insert(ignore_permissions=True)
 
-    gratuity = round(gratuity, 2)
+        frappe.db.commit()
 
-    pf_employee = pf_employer
-
-    children_allowance = 500
-
-
-
-
-
-
-    employee_doc = frappe.get_doc("Employee", employee)
-
-    age = employee_doc.custom_age
-    if age is None:
-        frappe.throw(_("Please set the age of the employee."))
-
-    # get all ages from Age doctype and convert to integers
-    age_list = frappe.get_all("Health Insurance", fields=["name"])
-    ages = sorted([int(a["name"]) for a in age_list])
-
-    # find the largest age that is <= employee's age
-    lower_age = max([a for a in ages if a <= int(age)], default=None)
-
-    next_age = min([a for a in ages if a > lower_age], default=None) if lower_age is not None else None
-
-    medical_insurance = frappe.get_value("Health Insurance", {"name": next_age}, "employer")
-
-    medical_insurance = medical_insurance or 0
-
-    medical_insurance = round((medical_insurance / 12), 2)
-
-
-
-    if 1200000 < ctc <= 2400000:
-        lta = 62400
-    elif 2400000 < ctc <= 3600000:
-        lta = 120000
-    elif ctc > 3600000:
-        lta = 360000
-    else:
-        lta = 0
-    lta = round((lta / 12),2)
-
-
-    if ctc> 360000:
-        conveyance_allowance = 19200
-    else:
-        conveyance_allowance = 0
-    conveyance_allowance = round((conveyance_allowance / 12),2)
-
-    if ctc > 1200000:
-        fuel_and_maintenance = 21600
-    else:
-        fuel_and_maintenance = 0
-    fuel_and_maintenance = round((fuel_and_maintenance / 12),2)
-
-
-    if ctc > 1200000:
-        driver_reimbursement = 10800
-    else:
-        driver_reimbursement = 0
-    driver_reimbursement = round((driver_reimbursement / 12),2)
-
-    if ctc > 2400000:
-        books_and_periodicals = 24000
-    else:
-        books_and_periodicals = 0
-    books_and_periodicals  = round((books_and_periodicals / 12),2)
-
-
-    total_earnings = fixed -(pf_employer+gratuity+medical_insurance)
-
-    if total_earnings > 252000:
-        esi_employer = 0
-    else:
-        esi_employer = total_earnings * (3.25 / 100)
-    
-    esi_employer = round(esi_employer, 2)
-
-    if total_earnings > 252000:
-        esi_employee = 0
-    else:
-        esi_employee = total_earnings * (0.75 / 100)
-    
-    esi_employee = round(esi_employee, 2)
-
-
-    
-    special_allowance = max((ctc/12) - (basic + hra + children_allowance + mobile_allowance+conveyance_allowance+ fuel_and_maintenance + driver_reimbursement + books_and_periodicals + lta+
-                               medical_insurance + pf_employer + gratuity +esi_employer), 0)
-    
-    
-    special_allowance = round(special_allowance, 2)
-
-
-        # Define mappings for earnings and deductions
-    earning_map = {
-        "Basic Component": basic,
-        "HRA Component": hra,
-        "Mobile Allowance": mobile_allowance,
-        "Children Education Allowance": children_allowance,
-        "Special Allowance": special_allowance,
-        "LTA": lta,
-        "Conveyance Allowance": conveyance_allowance,
-        "Fuel & Maintenance": fuel_and_maintenance,
-        "Driver Reimbursment": driver_reimbursement,
-        "Books & Periodicals": books_and_periodicals
-    }
-
-    deduction_map = {
-        "PF Payer Component": pf_employer,
-        "PF Payee Component": pf_employee,
-        "Gratuity": gratuity,
-        "Medical Insurance Component": medical_insurance,
-        "ESI Payer": esi_employer,
-        "ESI Payee": esi_employee
-    }
-
-    # Clear and re-add earnings rows
-    if hasattr(employee_doc, "custom_earnings"):
-        employee_doc.custom_earnings = []  # Clear existing rows
-        for component, amount in earning_map.items():
-            employee_doc.append("custom_earnings", {
-                "salary_component": component,
-                "amount": amount,
-                "additional_salary": ""
-            })
-
-    # Clear and re-add deduction rows
-    if hasattr(employee_doc, "custom_deductions"):
-        employee_doc.custom_deductions = []  # Clear existing rows
-        for component, amount in deduction_map.items():
-            employee_doc.append("custom_deductions", {
-                "salary_component": component,
-                "amount": amount,
-                "additional_salary": ""
-            })
-
-
-    employee_doc.save(ignore_permissions=True)
-    frappe.db.commit()
-    employee_doc.reload()
-
+    finally:
+        frappe.flags.in_salary_amount_calc = False
 
 
 @frappe.whitelist()
@@ -518,7 +471,7 @@ def get_employee_attendance():
     employee_id = frappe.db.get_value("Employee", {"user_id": user_id}, "name")
     
     if not employee_id:
-        employee_id = "DRD-1169"  # Default to Karthik
+        frappe.msgprint("No employee detected")
     
     try:
         records = frappe.get_all(
@@ -534,8 +487,6 @@ def get_employee_attendance():
             date_key = record.attendance_date.strftime("%Y-%m-%d")
             attendance_dict[date_key] = record.status
         
-        # Just show a simple summary
-        frappe.msgprint(f"Loaded attendance for {len(records)} dates")
         
         return attendance_dict
         
@@ -546,8 +497,9 @@ def get_employee_attendance():
 
 
 @frappe.whitelist()
-def get_professional_tax(name):
-    salary_slip_doc = frappe.get_doc("Salary Slip", name)
+def get_professional_tax(doc, method):
+    salary_slip_doc = doc
+    name = doc.name
     gross_salary = salary_slip_doc.gross_pay
     try:
         professional_tax = frappe.get_all(
@@ -588,10 +540,7 @@ def get_professional_tax(name):
 
 
 @frappe.whitelist()
-
-
 def mark_attendance_based_on_hours(from_date=None):
-    # If no date is given, default to today
     if not from_date:
         from_date = date.today()-timedelta(days=1)
 
