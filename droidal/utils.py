@@ -337,8 +337,18 @@ def replace_salary_structure(doc, method=None):
         frappe.flags.in_replace_salary_structure = False
 
 
+
 @frappe.whitelist()
 def employee_get_all_salay_amount(doc, method=None):
+
+    def get_hra(basic):
+        if basic < 280000:
+            result = basic * 0.10
+        else:
+            result = basic * 0.25
+        return round(result)
+    
+    
     # --- guard to prevent infinite loop ---
     if getattr(frappe.flags, "in_salary_amount_calc", False):
         return
@@ -349,25 +359,9 @@ def employee_get_all_salay_amount(doc, method=None):
         employee = doc.name
 
         # === Basic and HRA ===
-        basic = round((ctc / 2) / 12, 2)
-        hra = round(basic / 2, 2)
-
-        # === Mobile Allowance ===
-        if 300000 < ctc <= 1200000:
-            mobile_allowance = 12000
-        elif ctc <= 300000:
-            mobile_allowance = 6000
-        else:
-            mobile_allowance = 30000
-        mobile_allowance = round(mobile_allowance / 12, 2)
-
-        # === PF & Gratuity ===
-        check_basic = basic * 12
-        pf_employer = round((check_basic * 0.12) / 12, 2) if check_basic < 180000 else round(21600 / 12, 2)
-        gratuity = round(basic * 0.0481, 2)
-        pf_employee = pf_employer
-        children_allowance = 500
-
+        basic = round((ctc * 0.50), 2)
+        hra = get_hra(ctc)
+        
         # === Medical Insurance ===
         age = doc.custom_age
         if age is None:
@@ -378,62 +372,97 @@ def employee_get_all_salay_amount(doc, method=None):
         lower_age = max([a for a in ages if a <= int(age)], default=None)
         next_age = min([a for a in ages if a > lower_age], default=None) if lower_age is not None else None
         medical_insurance = frappe.get_value("Health Insurance", {"name": next_age}, "employer") or 0
-        medical_insurance = round(medical_insurance / 12, 2)
 
         # === Other allowances ===
-        lta = round(
-            62400 / 12 if 1200000 < ctc <= 2400000
-            else 120000 / 12 if 2400000 < ctc <= 3600000
-            else 360000 / 12 if ctc > 3600000
-            else 0, 2,
-        )
-        conveyance_allowance = round((19200 / 12) if ctc > 360000 else 0, 2)
-        fuel_and_maintenance = round((21600 / 12) if ctc > 1200000 else 0, 2)
-        driver_reimbursement = round((10800 / 12) if ctc > 1200000 else 0, 2)
-        books_and_periodicals = round((24000 / 12) if ctc > 2400000 else 0, 2)
+        def get_lta(ctc):
+            if ctc >=1200001:
+                return 120000
+            else:
+                return 0
+            
+        lta = round(get_lta(ctc))
+        conveyance_allowance = round(ctc * 0.03)
 
-        # === ESI ===
-        total_earnings = ctc - (pf_employer + gratuity + medical_insurance)
-        if total_earnings > 252000:
-            esi_employer = 0
-            esi_employee = 0
+
+        # ############################
+        # if gross <= 21000:
+        #     satuatory_bonus = round(basic * 0.0833, 0)
+        # else:
+        #     satuatory_bonus = round(basic * 0.04, 0)
+        # #############################
+
+        # # === Special Allowance ===
+        # special_allowance = max((ctc) - (basic + hra  + conveyance_allowance +satuatory_bonus),0)
+        # special_allowance = round(special_allowance, 2)
+        # gross = basic+hra+special_allowance+conveyance_allowance+lta 
+
+        satuatory_bonus = 0
+        # initial estimates
+        gross = basic + hra + conveyance_allowance + lta
+        prev_gross = 0
+        pf_employer = gratuity = esi_employer = 0
+
+        while abs(gross/12 - prev_gross/12) > 0.01:  # iterate until stable
+            prev_gross = gross
+
+            hidden = (gross - hra)
+
+            # recalculate PF, gratuity, ESI
+            pf_employer = round(21600 if hidden > 180000 else hidden * 0.12, 0)
+            gratuity = round(basic * 0.0481, 0)
+            esi_employer = round(0 if gross > 252000 else gross * 0.0325, 0)
+            esi_employee = round(0 if gross > 252000 else gross * 0.0075, 0)
+            other_benifits = pf_employer + gratuity + esi_employer
+
+            # statutory bonus depends on gross
+            if gross/12 <= 21000:
+                satuatory_bonus = round(basic * 0.0833, 0)
+            else:
+                satuatory_bonus = round(basic * 0.04, 0)
+
+            # special allowance depends on statutory bonus and other benefits
+            special_allowance = max(ctc - (basic + hra + conveyance_allowance + satuatory_bonus + lta + other_benifits), 0)
+            special_allowance = round(special_allowance, 2)
+
+            # recalculate gross
+            gross = basic + hra + special_allowance + conveyance_allowance + lta
+
+        pf_employee = pf_employer
+
+        # final GMC premium
+        if esi_employee == 0:
+            gmc_premium = medical_insurance
         else:
-            esi_employer = round(total_earnings * 0.0325, 2)
-            esi_employee = round(total_earnings * 0.0075, 2)
+            gmc_premium = 0
 
-        # === Special Allowance ===
-        special_allowance = max(
-            (ctc / 12)
-            - (
-                basic + hra + children_allowance + mobile_allowance
-                + conveyance_allowance + fuel_and_maintenance
-                + driver_reimbursement + books_and_periodicals
-                + lta + medical_insurance + pf_employer + gratuity + esi_employer
-            ),
-            0,
-        )
-        special_allowance = round(special_allowance, 2)
+
+        professional_tax = get_professional_tax(gross)
+
+        
+        if esi_employee==0 :
+           gmc_premium = medical_insurance 
+        else :
+           gmc_premium = 0
 
         # === Update child tables ===
+        def rounding(component):
+            return round(component, 0)
         earning_map = {
-            "Basic Component": basic,
-            "HRA Component": hra,
-            "Mobile Allowance": mobile_allowance,
-            "Children Education Allowance": children_allowance,
-            "Special Allowance": special_allowance,
-            "LTA": lta,
-            "Conveyance Allowance": conveyance_allowance,
-            "Fuel & Maintenance": fuel_and_maintenance,
-            "Driver Reimbursement": driver_reimbursement,
-            "Books & Periodicals": books_and_periodicals,
+            "Basic Component": rounding(basic/12),
+            "HRA Component": rounding(hra/12),
+            "Conveyance Allowance": rounding(conveyance_allowance/12),
+            "Statutory Bonus": rounding(satuatory_bonus/12),
+            "Special Allowance": rounding(special_allowance/12),
+            "LTA":rounding(lta/12),
         }
         deduction_map = {
-            "PF Payer Component": pf_employer,
-            "PF Payee Component": pf_employee,
-            "Gratuity": gratuity,
-            "Medical Insurance Component": medical_insurance,
-            "ESI Payer": esi_employer,
-            "ESI Payee": esi_employee,
+            "PF Payer Component": rounding(pf_employer/12),
+            "ESI Payer": rounding(esi_employer/12),
+            "Gratuity": rounding(gratuity/12),
+            "PF Payee Component": rounding(pf_employee/12),
+            "ESI Payee": rounding(esi_employee/12),
+            "GMC PREMIUM - EMPLOYEE": rounding(gmc_premium/12),
+            "Professional Tax": rounding(professional_tax/12),
         }
 
         # === Clear existing rows in DB and insert new rows ===
@@ -496,47 +525,28 @@ def get_employee_attendance():
     
 
 
-@frappe.whitelist()
-def get_professional_tax(doc, method):
-    salary_slip_doc = doc
-    name = doc.name
-    gross_salary = salary_slip_doc.gross_pay
-    try:
-        professional_tax = frappe.get_all(
-            "Professional Tax",
-            filters={"basic_range_from":["<=", gross_salary],
-                    "basic_range_to":[">=", gross_salary],
-                    "from_date":["<=", salary_slip_doc.start_date],
-                    },
-            fields=["tax_amount"],
-            order_by="from_date desc",
-            limit_page_length=1
-        )
+def get_professional_tax(gross):
+    value = (
+    425 if gross <= 45000
+    else 930 if gross <= 60000
+    else 1025 if gross <= 75000
+    else 1250
+    )
+    return value * 2
 
-        if professional_tax:
-            salary_detail_exists = frappe.db.exists({
-                "doctype": "Salary Detail",
-                "parent": name,
-                "salary_component": "Professional Tax"
-            })
-            if salary_detail_exists:
-                return {"status": "exists", "message": "Professional Tax already exists in Salary Slip."}
-
-
-
-            salary_detail = frappe.new_doc("Salary Detail")
-            salary_detail.salary_component = "Professional Tax"
-            salary_detail.amount = professional_tax[0].tax_amount
-            salary_detail.parent = name
-            salary_detail.parentfield = "deductions"
-            salary_detail.parenttype = "Salary Slip"
-            salary_detail.save(ignore_permissions=True)
-            frappe.db.commit()        
-
-    except Exception as e:
-        frappe.log_error(frappe.get_traceback(), "get_professional_tax API")
-        return {"status": "error", "message": str(e)}
-    
+def get_night_shift_allowance(doc, method):
+    if doc.payment_days:
+        get_attendance = frappe.get_all("Attendance", 
+                                        filters={"employee":doc.employee,
+                                        "attendance_date":["between",doc.start_date,doc.end_date],
+                                        "status":["Work From Home"]
+                                        },
+                                        fields=["status"]
+                                        )
+        work_from_home_days  = len(get_attendance)
+        nsa_wfh = work_from_home_days*150
+        work_from_office_days = abs(int(work_from_home_days) - int(doc.payment_days))
+        nsa_wfo = work_from_office_days*170
 
 
 @frappe.whitelist()
