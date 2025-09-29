@@ -245,14 +245,14 @@ def get_punch_status():
             "within_shift": within_shift,
             "shift_start": start_time,
             "shift_end": end_time,
-            "server_now": now_time   # ⬅️ Important
+            "server_now": now_time   
         }
     return {
         "status": "out",
         "within_shift": within_shift,
         "shift_start": start_time,
         "shift_end": end_time,
-        "server_now": now_time       # ⬅️ Important
+        "server_now": now_time      
     }
 
 
@@ -307,29 +307,31 @@ def replace_salary_structure(doc, method=None):
         ctc = doc.ctc or 0
         today = frappe.utils.nowdate()
 
-        existing = frappe.get_all(
-            "Salary Structure Assignment",
-            filters={
-                "employee": doc.name,
-                "salary_structure": doc.custom_salary_structure,
-                "from_date": today,
-            },
-            pluck="name",
-        )
+        # existing = frappe.get_all(
+        #     "Salary Structure Assignment",
+        #     filters={
+        #         "employee": doc.name,
+        #         "salary_structure": doc.custom_salary_structure,
+        #         "from_date": today,
+        #         "status": "Submitted"
+        #     },
+        #     pluck="name",
+        # )
 
-        if existing:
-            assignment = frappe.get_doc("Salary Structure Assignment", existing[0])
-            assignment.base = (ctc / 12) / 2
-            assignment.save(ignore_permissions=True)
-        else:
-            assignment = frappe.get_doc({
-                "doctype": "Salary Structure Assignment",
-                "employee": doc.name,
-                "salary_structure": doc.custom_salary_structure,
-                "from_date": today,
-                "base": (ctc / 12) / 2 if ctc else 0,
-            })
-            assignment.insert(ignore_permissions=True)
+        # if existing:
+        #     assignment = frappe.get_doc("Salary Structure Assignment", existing[0])
+        #     assignment.base = (ctc / 12) / 2
+        #     assignment.save(ignore_permissions=True)
+        # else:
+        assignment = frappe.get_doc({
+            "doctype": "Salary Structure Assignment",
+            "employee": doc.name,
+            "salary_structure": doc.custom_salary_structure,
+            "from_date": today,
+            "base": (ctc / 12) / 2 if ctc else 0,
+            "income_tax_slab": "fy 2024-20205",
+        })
+        assignment.insert(ignore_permissions=True)
 
         frappe.db.commit()
         return assignment.name
@@ -425,7 +427,7 @@ def employee_get_all_salay_amount(doc, method=None):
             special_allowance = round(special_allowance, 2)
 
             # recalculate gross
-            gross = basic + hra + special_allowance + conveyance_allowance + lta
+            gross = basic + hra + special_allowance + conveyance_allowance + lta +satuatory_bonus
 
         pf_employee = pf_employer
 
@@ -544,9 +546,19 @@ def get_night_shift_allowance(doc, method):
                                         fields=["status"]
                                         )
         work_from_home_days  = len(get_attendance)
-        nsa_wfh = work_from_home_days*150
+        nsa_wfh = work_from_home_days*120
         work_from_office_days = abs(int(work_from_home_days) - int(doc.payment_days))
         nsa_wfo = work_from_office_days*170
+
+        total = nsa_wfh + nsa_wfo
+
+        week_off_allowance = frappe.get_all("Holiday Compensation", 
+                                        filters={"employee":doc.employee,"date":["between",doc.start_date,doc.end_date]},
+                                        fields=["*"])
+        if week_off_allowance:
+            total += doc.gross_pay/doc.working_days*len(week_off_allowance)
+        
+        
 
 
 @frappe.whitelist()
