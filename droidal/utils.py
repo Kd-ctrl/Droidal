@@ -539,39 +539,42 @@ def get_professional_tax(gross):
     return value * 2
 
 def get_night_shift_allowance(doc, method):
-    if doc.payment_days:
-        get_attendance = frappe.get_all("Attendance", 
-                                        filters={"employee":doc.employee,
-                                        "attendance_date":["between",doc.start_date,doc.end_date],
-                                        "status":"Work From Home",
-                                        },
-                                        fields=["status"]
-                                        )
-        work_from_home_days  = len(get_attendance)
-        nsa_wfh = work_from_home_days*120
-        work_from_office_days = abs(int(work_from_home_days) - int(doc.payment_days))
-        nsa_wfo = work_from_office_days*170
+    nsa_list = frappe.get_all("NSA list", {},["name"])
+    if doc.payment_days and nsa_list:
+        nsa_list = [n['name'] for n in nsa_list]
+        if doc.custom_holiday_ in nsa_list:
+            get_attendance = frappe.get_all("Attendance", 
+                                            filters={"employee":doc.employee,
+                                            "attendance_date":["between",doc.start_date,doc.end_date],
+                                            "status":"Work From Home",
+                                            },
+                                            fields=["status"]
+                                            )
+            work_from_home_days  = len(get_attendance)
+            nsa_wfh = work_from_home_days*120
+            work_from_office_days = abs(int(work_from_home_days) - int(doc.payment_days))
+            nsa_wfo = work_from_office_days*170
 
-        total = nsa_wfh + nsa_wfo
+            total = nsa_wfh + nsa_wfo
 
-        week_off_allowance = frappe.db.get_all("Holiday Compensation", 
-                                        filters={"employee":doc.employee,"date":["between",[doc.start_date,doc.end_date]]},
-                                        fields=["*"])
-        if week_off_allowance:
-            total += (doc.gross_pay/doc.total_working_days )*len(week_off_allowance)
-        
-        frappe.get_doc({
-            "doctype": "Salary Detail",
-            "parent": doc.name,
-            "parentfield": "earnings",
-            "parenttype": "Salary Slip",
-            "salary_component": "Other Earnings",
-            "amount": int(total)
-        }).insert(ignore_permissions=True)
-        
+            week_off_allowance = frappe.db.get_all("Holiday Compensation", 
+                                            filters={"employee":doc.employee,"date":["between",[doc.start_date,doc.end_date]]},
+                                            fields=["*"])
+            if week_off_allowance:
+                total += (doc.gross_pay/doc.total_working_days )*len(week_off_allowance)
+            
+            frappe.get_doc({
+                "doctype": "Salary Detail",
+                "parent": doc.name,
+                "parentfield": "earnings",
+                "parenttype": "Salary Slip",
+                "salary_component": "Other Earnings",
+                "amount": int(total)
+            }).insert(ignore_permissions=True)
+            
 
-        frappe.db.commit()
-        
+            frappe.db.commit()
+            
 
 
 @frappe.whitelist()
