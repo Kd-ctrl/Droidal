@@ -470,6 +470,8 @@ def employee_get_all_salay_amount(doc, method=None):
         # === Clear existing rows in DB and insert new rows ===
         frappe.db.delete("Salary Detail", {"parent": employee})
 
+        frappe.db.set_value("Employee", employee, "custom_calculated_gross_amount", gross)
+
         for comp, amt in earning_map.items():
             frappe.get_doc({
                 "doctype": "Salary Detail",
@@ -541,7 +543,7 @@ def get_night_shift_allowance(doc, method):
         get_attendance = frappe.get_all("Attendance", 
                                         filters={"employee":doc.employee,
                                         "attendance_date":["between",doc.start_date,doc.end_date],
-                                        "status":["Work From Home"]
+                                        "status":"Work From Home",
                                         },
                                         fields=["status"]
                                         )
@@ -552,12 +554,23 @@ def get_night_shift_allowance(doc, method):
 
         total = nsa_wfh + nsa_wfo
 
-        week_off_allowance = frappe.get_all("Holiday Compensation", 
-                                        filters={"employee":doc.employee,"date":["between",doc.start_date,doc.end_date]},
+        week_off_allowance = frappe.db.get_all("Holiday Compensation", 
+                                        filters={"employee":doc.employee,"date":["between",[doc.start_date,doc.end_date]]},
                                         fields=["*"])
         if week_off_allowance:
-            total += doc.gross_pay/doc.working_days*len(week_off_allowance)
+            total += (doc.gross_pay/doc.total_working_days )*len(week_off_allowance)
         
+        frappe.get_doc({
+            "doctype": "Salary Detail",
+            "parent": doc.name,
+            "parentfield": "earnings",
+            "parenttype": "Salary Slip",
+            "salary_component": "Other Earnings",
+            "amount": int(total)
+        }).insert(ignore_permissions=True)
+        
+
+        frappe.db.commit()
         
 
 

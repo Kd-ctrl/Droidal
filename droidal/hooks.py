@@ -126,8 +126,9 @@ app_include_js = "/assets/droidal/js/workspace_hide.js"
 
 doc_events = {
   "Salary Slip":{
-    "after_insert": "droidal.salary_slip.auto_assign_employee",
-    # "after_insert": "droidal.utils.get_professional_tax",
+    "after_insert": ["droidal.salary_slip.auto_assign_employee",
+                      "droidal.utils.get_night_shift_allowance",
+                      ]
   },
   "Employee": {
         "on_update": [
