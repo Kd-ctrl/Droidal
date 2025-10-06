@@ -382,8 +382,8 @@ def employee_get_all_salay_amount(doc, method=None):
             else:
                 return 0
             
-        lta = round(get_lta(ctc))
-        conveyance_allowance = round(ctc * 0.03)
+        lta = round(get_lta(ctc),2)
+        conveyance_allowance = round((ctc * 0.03),2)
 
 
         # ############################
@@ -397,6 +397,7 @@ def employee_get_all_salay_amount(doc, method=None):
         # special_allowance = max((ctc) - (basic + hra  + conveyance_allowance +satuatory_bonus),0)
         # special_allowance = round(special_allowance, 2)
         # gross = basic+hra+special_allowance+conveyance_allowance+lta 
+        special_allowance = 0
 
         satuatory_bonus = 0
         # initial estimates
@@ -404,23 +405,23 @@ def employee_get_all_salay_amount(doc, method=None):
         prev_gross = 0
         pf_employer = gratuity = esi_employer = 0
 
-        while abs(gross/12 - prev_gross/12) > 0.01:  # iterate until stable
+        while abs(gross - prev_gross) > 1:  # iterate until stable
             prev_gross = gross
 
-            hidden = (gross - hra)
+            hidden = (gross - hra - satuatory_bonus)
 
             # recalculate PF, gratuity, ESI
-            pf_employer = round(21600 if hidden > 180000 else hidden * 0.12, 0)
-            gratuity = round(basic * 0.0481, 0)
-            esi_employer = round(0 if gross > 252000 else gross * 0.0325, 0)
-            esi_employee = round(0 if gross > 252000 else gross * 0.0075, 0)
+            pf_employer = round(21600 if hidden > 180000 else hidden * 0.12, 2)
+            gratuity = round(basic * 0.0481, 2)
+            esi_employer = round(0 if gross > 252000 else gross * 0.0325, 2)
+            esi_employee = round(0 if gross > 252000 else gross * 0.0075, 2)
             other_benifits = pf_employer + gratuity + esi_employer
 
             # statutory bonus depends on gross
             if gross/12 <= 21000:
-                satuatory_bonus = round(basic * 0.0833, 0)
+                satuatory_bonus = round(basic * 0.0833, 2)
             else:
-                satuatory_bonus = round(basic * 0.04, 0)
+                satuatory_bonus = round(basic * 0.04, 2)
 
             # special allowance depends on statutory bonus and other benefits
             special_allowance = max(ctc - (basic + hra + conveyance_allowance + satuatory_bonus + lta + other_benifits), 0)
@@ -448,7 +449,7 @@ def employee_get_all_salay_amount(doc, method=None):
 
         # === Update child tables ===
         def rounding(component):
-            return round(component, 0)
+            return round(component, 2)
         earning_map = {
             "Basic Component": rounding(basic/12),
             "HRA Component": rounding(hra/12),
@@ -500,10 +501,12 @@ def employee_get_all_salay_amount(doc, method=None):
 
 def get_deduction_amount(doc, method=None):
     exclude_list = ["Gratuity", "PF Payer Component","ESI Payer"]
-    doc.custom_deduction = sum(
+    doc.custom_deductions = sum(
         d.amount for d in doc.deductions
         if d.salary_component not in exclude_list
     )
+
+    doc.custom_net_amount = (doc.gross_pay) - doc.custom_deductions
     doc.save(ignore_permissions=True)
 
 
