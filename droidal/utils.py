@@ -498,6 +498,16 @@ def employee_get_all_salay_amount(doc, method=None):
         frappe.flags.in_salary_amount_calc = False
 
 
+def get_deduction_amount(doc, method=None):
+    exclude_list = ["Gratuity", "PF Payer Component","ESI Payer"]
+    doc.custom_deduction = sum(
+        d.amount for d in doc.deductions
+        if d.salary_component not in exclude_list
+    )
+    doc.save(ignore_permissions=True)
+
+
+
 @frappe.whitelist()
 def get_employee_attendance():
     user_id = frappe.session.user

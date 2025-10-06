@@ -128,6 +128,7 @@ doc_events = {
   "Salary Slip":{
     "after_insert": ["droidal.salary_slip.auto_assign_employee",
                       "droidal.utils.get_night_shift_allowance",
+                      "droidal.utils.get_deduction_amount",
                       ]
   },
   "Employee": {
